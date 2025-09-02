@@ -959,6 +959,16 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 			if (fila > 0) {
 				fila--;
 			}
+
+			if (col < 0 || col >= matrizPre[fila].size()) {
+				error = true;
+				errorcito.edo = 652; // Error de elemento no reconocido
+				ErroresSin(652);
+				errorcito.Mensaje = ERRSIN;
+				errorG.push_back(errorcito);
+				break;
+			}
+
 			int numprod = matrizPre[fila][col];
 			if (numprod >= 1 && numprod <= 109) {
 				esNoTerminal = true;
