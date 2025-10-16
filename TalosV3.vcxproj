@@ -128,6 +128,7 @@
       <FileType>CppForm</FileType>
     </ClInclude>
     <ClInclude Include="MostrarError.h" />
+    <ClInclude Include="Simbolos.h" />
     <ClInclude Include="TokenType.h" />
   </ItemGroup>
   <ItemGroup>

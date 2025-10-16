@@ -2,24 +2,27 @@
 #include "Interfaz.h"
 #include "TokenType.h"
 #include "MostrarError.h"
+#include "Simbolos.h"
 #include <iostream>
 #include <stack>
 #include <vector>
+#include <unordered_map>
 #include <msclr/marshal_cppstd.h>
 
 using namespace std;
 using namespace System;
 using namespace System::Windows::Forms;
 
-//TalosV3::Interfaz^ TalosV3::Interfaz::fmg = nullptr;
+#pragma region Variables Globales
 std::string cadenaA, linea, TOKEN = "";
 std::string ERR = "", formaPalabraR = "",Palabra = "",ERRSIN = "", palabraTemp = "";
 int edo, col,colPre = -1, ap_ini,edoAnterior, longitud;
 char c, analizado;
-int cont_cadena = 0, index = 0;
+int cont_cadena = 0, index = 0, cont_direcc = 100;
 bool culmina = false, esReservada = false;
-
-
+Simbolos simbolo;
+std::unordered_map<std::string, Simbolos> tablaSimbolos;
+std::vector<std::string> pilaLexemas;
 int matriz[26][32] = {
 	{  1,  2,  3,506,506,  0,  0,  0,134,  2,  1, 19, 20,  9, 10, 11, 12, 13, 14, 15, 17,127,119,120,121,122,124,123, 21, 25,128,508}, //q0
 	{  1,  2,  2,  2,100,100,100,100,100,  2,  1,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,508}, //q1
@@ -216,10 +219,125 @@ std::vector <std::vector <int>> producciones = {
 	{700},
 };
 
+std::vector <std::vector <int>> prodSem = {
+	{4, 2, 3},
+	{2, 6},
+	{2, 5},
+	{2, 15},
+	{700},
+	{3, 1054, 1057, 1058, 1005, 1000},
+	{700},
+	{1047, 18, 1004},
+	{5, 1054, 14, 1051, 1005, 1002},
+	{700},
+	{6, 1054, 13, 1050, 7, 1001},
+	{8, 2030,1005},
+	{7, 2030,1053},
+	{700},
+	{10,2030,1005},
+	{9, 2030,1053},
+	{700},
+	{700},
+	{1006},
+	{1007},
+	{1008},
+	{1009},
+	{1010},
+	{1011},
+	{1012},
+	{1013},
+	{1014},
+	{1015},
+	{1016},
+	{15, 1048, 18, 6, 1052, 16, 1026, 13, 1051, 1005, 1003},
+	{700},
+	{17, 13, 1051, 9},
+	{700},
+	{16, 1053},
+	{700},
+	{18, 1054, 19},
+	{18, 20},
+	{700},
+	{21},
+	{24},
+	{23},
+	{22},
+	{27},
+	{31},
+	{34},
+	{30},
+	{35},
+	{29, 1005},
+	{1052, 11, 1026, 1019},
+	{1052, 25, 1026, 1018},
+	{36, 1017},
+	{26, 36},
+	{25, 1053},
+	{700},
+	{1005, 28},
+	{1020},
+	{1021},
+	{36, 1051},
+	{1020},
+	{1021},
+	{1056, 1052, 36, 1026, 1049, 18, 1024},
+	{1044, 33, 32, 18, 1052, 36, 1026, 1022},
+	{32, 18, 1052, 36, 1026, 1042},
+	{700},
+	{18, 1043},
+	{700},
+	{1045, 18, 1052, 36, 1026, 1023},
+	{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025},
+	{37, 38},
+	{36, 1028},
+	{700},
+	{39, 40},
+	{36, 1029},
+	{700},
+	{41},
+	{41, 1027},
+	{42, 43},
+	{43, 48},
+	{700},
+	{44, 46},
+	{43, 45},
+	{700},
+	{1036},
+	{1037},
+	{700},
+	{47, 49},
+	{46, 1038},
+	{46, 1039},
+	{46, 1040},
+	{46, 1041},
+	{700},
+	{1030},
+	{1031},
+	{1032},
+	{1033},
+	{1034},
+	{1035},
+	{50, 1005},
+	{14},
+	{1052, 36, 1026},
+	{1052, 51, 1026},
+	{700},
+	{52, 1005},
+	{0},
+	{51, 1053},
+	{700},
+	{12, 1005},
+	{11, 1053},
+	{700},
+};
+
 std::string PalabrasReservadas[31] = {"include","lib","endlib","class","endclass","int","float","char","string","bool","void","if","elseif","else","endif","do","enddo","while","endwhile","read","write","def","const","of","dowhile","for","endfor","function","endfunction","return","to"};
 
 int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,107};
 
+#pragma endregion
+
+#pragma region Funciones
 char Leer_Caracter(System::String^ codespace) {
 
 	if (index >= 0 && index < codespace->Length) {
@@ -331,7 +449,95 @@ void Error(int e) {
 	}
 }
 
+enum ColumnasPredictiva {
+	include = 0,
+	def = 1,
+	const_ = 2,
+	function = 3,
+	class_ = 4,
+	id = 5,
+	int_type = 6,
+	float_type = 7,
+	char_type = 8,
+	string_type = 9,
+	bool_type = 10,
+	void_type = 11,
+	cte_entera = 12,
+	cte_real = 13,
+	cte_notacion = 14,
+	cte_caracter = 15,
+	cte_string = 16,
+	return_ = 17,
+	write = 18,
+	read = 19,
+	incremento = 20,
+	decremento = 21,
+	if_ = 22,
+	while_ = 23,
+	do_ = 24,
+	for_ = 25,
+	par_abre = 26,
+	not_ = 27,
+	or_ = 28,
+	and_ = 29,
+	igual_igual = 30,
+	diferente = 31,
+	menor = 32,
+	menor_igual = 33,
+	mayor = 34,
+	mayor_igual = 35,
+	suma = 36,
+	resta = 37,
+	multiplicacion = 38,
+	division = 39,
+	modulus = 40,
+	potencia = 41,
+	elseif_ = 42,
+	else_ = 43,
+	endif = 44,
+	endwhile = 45,
+	endfor = 46,
+	endclass = 47,
+	endfunction = 48,
+	dowhile = 49,
+	of = 50,
+	asignacion = 51,
+	par_cierra = 52,
+	coma = 53,
+	punto_y_coma = 54,
+	to = 55,
+	enddo = 56,
+	lib = 57,
+	punto = 58,
+	eof = 59 // $ (fin de archivo)
+};
 
+#pragma endregion
+
+#pragma region Semantico
+void AccionId1(const std::string& lexema) {
+	if (tablaSimbolos.count(lexema)) // El identificador ya existe en la tabla de símbolos
+		std::cerr << "Error: Identificador '" << lexema << "' ya declarado." << std::endl;
+	else
+		pilaLexemas.push_back(lexema);
+}
+
+void AccionId2(const std::string& tipo) {
+	while (!pilaLexemas.empty()) {
+		std::string lexema_act = pilaLexemas.back();
+		pilaLexemas.pop_back();
+
+		int nuevaDirecc = cont_direcc++;
+		Simbolos nuevoSimbolo = { tipo, nuevaDirecc };
+
+		if (!tablaSimbolos.count(lexema_act))  // Insertar en la tabla de simbolos solo si no hay redeclaracion
+			tablaSimbolos.emplace(lexema_act, nuevoSimbolo);
+	}
+}
+
+#pragma endregion
+
+#pragma region Lexico
 void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 {
 	System::String^ codespace = form->CodeSpace->Text;
@@ -506,12 +712,11 @@ static Tokenizador GetNextToken(System::String^ codespace)
 						//System::String^ lex = codespace->Substring(ap_ini, longitud)->Trim();
 						Token(edo);
 						System::String^ lex = "";
-						for (int i = ap_ini; i < index; ++i)
+						for (int i = ap_ini; i < index; ++i)  // Esta parte es para obtener la subcadena o el lexema sin usar Substring
 							lex += codespace[i];
 						lex = lex->Trim();
 						token.lexema = msclr::interop::marshal_as<string>(lex);
 						token.edo = edo;
-						//token.lexema = msclr::interop::marshal_as<string>(lex);
 						token.gramema = TOKEN;
 						palabraTemp = Palabra;
 						Palabra = "";
@@ -519,6 +724,14 @@ static Tokenizador GetNextToken(System::String^ codespace)
 						break;
 					}
 				}
+
+				// AQUI DEBEMOS PONER LA PARTE DONDE ES UNA RESERVADA PERO DEBEMOS COMPARAR EL EDO CON LOS TIPOS DISPONIBLES PARA LUEGO MANDAR A LLAMAR A AccionId2
+				/*if (esReservada && (edo == 100)) {
+					if (palabraTemp == "int" || palabraTemp == "float" || palabraTemp == "char" || palabraTemp == "string" || palabraTemp == "bool" || palabraTemp == "void") {
+						AccionId2(palabraTemp);
+					}
+				}*/
+
 
 				if (!esReservada && !Palabra.empty()) {
 					edo = 101; // Si no es una palabra reservada, se considera un identificador
@@ -535,6 +748,7 @@ static Tokenizador GetNextToken(System::String^ codespace)
 					Token(edo);
 					token.gramema = TOKEN;
 					palabraTemp = Palabra;
+					AccionId1(token.lexema);
 					Palabra = "";
 					return token;
 				}
@@ -623,69 +837,9 @@ static Tokenizador GetNextToken(System::String^ codespace)
 	return token;
 }
 
-enum ColumnasPredictiva {
-	include = 0,
-	def = 1,
-	const_ = 2,
-	function = 3,
-	class_ = 4,
-	id = 5,
-	int_type = 6,
-	float_type = 7,
-	char_type = 8,
-	string_type = 9,
-	bool_type = 10,
-	void_type = 11,
-	cte_entera = 12,
-	cte_real = 13,
-	cte_notacion = 14,
-	cte_caracter = 15,
-	cte_string = 16,
-	return_ = 17,
-	write = 18,
-	read = 19,
-	incremento = 20,
-	decremento = 21,
-	if_ = 22,
-	while_ = 23,
-	do_ = 24,
-	for_ = 25,
-	par_abre = 26,
-	not_ = 27,
-	or_ = 28, 
-	and_ = 29,
-	igual_igual = 30, 
-	diferente = 31, 
-	menor = 32,
-	menor_igual = 33,
-	mayor = 34,
-	mayor_igual = 35,
-	suma = 36,
-	resta = 37,
-	multiplicacion = 38,
-	division = 39,
-	modulus = 40,
-	potencia = 41,
-	elseif_ = 42,
-	else_ = 43,
-	endif = 44,
-	endwhile = 45,
-	endfor = 46,
-	endclass = 47,
-	endfunction = 48,
-	dowhile = 49,
-	of = 50,
-	asignacion = 51,
-	par_cierra = 52,
-	coma = 53,
-	punto_y_coma = 54,
-	to = 55,
-	enddo = 56,
-	lib = 57,
-	punto = 58,
-	eof = 59 // $ (fin de archivo)
-};
+#pragma endregion
 
+#pragma region Sintactico
 int relacionaTokenMatrizPre(int estadoLex, std::string palabra) {
 	int indiceColumnaMatriz = -1;
 
@@ -994,6 +1148,12 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 		if (PilaSintactico.top() >= 1000 && PilaSintactico.top() <= 1059) {
 
 			if (PilaSintactico.top() == colPre) {
+
+				int token_id = PilaSintactico.top();
+				if (token_id >= 1006 && token_id <= 1011) { // Si es un tipo de dato desde int hasta void
+					AccionId2(tokencito.lexema);
+				}
+
 				PilaSintactico.pop();
 				tokensA.push_back(tokencito); // Agregar el token a la lista de tokens aceptados
 				if (cont_cadena+1 == codespace->Length) {
@@ -1048,6 +1208,11 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 		form->ErrorsSpaces->AppendText("Error: "+ codeError+". "+ message);
 	}
 }
+
+#pragma endregion
+
+
+
 [STAThreadAttribute]
 void main()
 {
