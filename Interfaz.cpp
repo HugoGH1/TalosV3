@@ -14,15 +14,24 @@ using namespace System;
 using namespace System::Windows::Forms;
 
 #pragma region Variables Globales
-std::string cadenaA, linea, TOKEN = "";
-std::string ERR = "", formaPalabraR = "",Palabra = "",ERRSIN = "", palabraTemp = "";
+std::string cadenaA, linea, TOKEN = "", lexema_id = "";
+std::string TokenTem;
+std::string ERR = "", formaPalabraR = "",Palabra = "",ERRSIN = "", palabraTemp = "", ERRSEM = "";
 int edo, col,colPre = -1, ap_ini,edoAnterior, longitud;
 char c, analizado;
-int cont_cadena = 0, index = 0, cont_direcc = 100;
-bool culmina = false, esReservada = false;
+int cont_cadena = 0, index = 0, cont_direcc = 100, cont_resultado = 1;
+bool culmina = false, esReservada = false, accionSemantica = false, esDeclaracion = false;
 Simbolos simbolo;
+
 std::unordered_map<std::string, Simbolos> tablaSimbolos;
+std::unordered_map<std::string, int> mapaTipos;
+std::unordered_map<int, bool> tiposPermitidos;
+
 std::vector<std::string> pilaLexemas;
+std::vector<std::string> ErroresSemanticos;
+std::stack<std::string> pilaTipos;
+std::stack<std::string> pilaOpr;
+std::stack<std::string> pilaOperandos;
 int matriz[26][32] = {
 	{  1,  2,  3,506,506,  0,  0,  0,134,  2,  1, 19, 20,  9, 10, 11, 12, 13, 14, 15, 17,127,119,120,121,122,124,123, 21, 25,128,508}, //q0
 	{  1,  2,  2,  2,100,100,100,100,100,  2,  1,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,508}, //q1
@@ -108,115 +117,115 @@ std::vector <std::vector <int>> matrizPre = {
 };
 
 std::vector <std::vector <int>> producciones = {
-	{4, 2, 3},
-	{2, 6},
-	{2, 5},
-	{2, 15},
-	{700},
-	{3, 1054, 1057, 1058, 1005, 1000},
-	{700},
-	{1047, 18, 1004},
-	{5, 1054, 14, 1051, 1005, 1002},
-	{700},
-	{6, 1054, 13, 1050, 7, 1001},
-	{8, 1005},
-	{7, 1053},
-	{700},
-	{10, 1005},
-	{9, 1053},
-	{700},
-	{700},
-	{1006},
-	{1007},
-	{1008},
-	{1009},
-	{1010},
-	{1011},
-	{1012},
-	{1013},
-	{1014},
-	{1015},
-	{1016},
-	{15, 1048, 18, 6, 1052, 16, 1026, 13, 1051, 1005, 1003},
-	{700},
-	{17, 13, 1051, 9},
-	{700},
-	{16, 1053},
-	{700},
-	{18, 1054, 19},
-	{18, 20},
-	{700},
-	{21},
-	{24},
-	{23},
-	{22},
-	{27},
-	{31},
-	{34},
-	{30},
-	{35},
-	{29, 1005},
-	{1052, 11, 1026, 1019},
-	{1052, 25, 1026, 1018},
-	{36, 1017},
-	{26, 36},
-	{25, 1053},
-	{700},
-	{1005, 28},
-	{1020},
-	{1021},
-	{36, 1051},
-	{1020},
-	{1021},
-	{1056, 1052, 36, 1026, 1049, 18, 1024},
-	{1044, 33, 32, 18, 1052, 36, 1026, 1022},
-	{32, 18, 1052, 36, 1026, 1042},
-	{700},
-	{18, 1043},
-	{700},
-	{1045, 18, 1052, 36, 1026, 1023},
-	{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025},
-	{37, 38},
-	{36, 1028},
-	{700},
-	{39, 40},
-	{36, 1029},
-	{700},
-	{41},
-	{41, 1027},
-	{42, 43},
-	{43, 48},
-	{700},
-	{44, 46},
-	{43, 45},
-	{700},
-	{1036},
-	{1037},
-	{700},
-	{47, 49},
-	{46, 1038},
-	{46, 1039},
-	{46, 1040},
-	{46, 1041},
-	{700},
-	{1030},
-	{1031},
-	{1032},
-	{1033},
-	{1034},
-	{1035},
-	{50, 1005},
-	{14},
-	{1052, 36, 1026},
-	{1052, 51, 1026},
-	{700},
-	{52, 1005},
-	{0},
-	{51, 1053},
-	{700},
-	{12, 1005},
-	{11, 1053},
-	{700},
+	{4, 2, 3}, // PROGRAM	
+	{2, 6}, //PROD1
+	{2, 5}, // PROD1
+	{2, 15}, //PROD1
+	{700},// PROD1
+	{3, 1054, 1057, 1058, 1005, 1000}, //DECLARA LIB
+	{700}, // DECLARA LIB
+	{1047, 18, 1004}, //DECLARA CLASS
+	{5, 1054, 14, 1051, 1005, 1002}, //DECLARA CONS
+	{700}, // DECLARA CONS
+	{6, 1054, 13, 1050, 7, 1001}, //DECLARA VAR
+	{8,1005}, // PROD-ID
+	{7,1053}, // PROD-ID2
+	{700}, // PROD-ID2
+	{10,1005}, //PROD-ID3
+	{9,1053},//PROD-ID4
+	{700}, // PROD-ID4
+	{700}, //DECLARA VAR
+	{1006}, // TIPO INT
+	{1007}, // TIPO FLOAT
+	{1008}, // TIPO CHAR
+	{1009}, // TIPO STRING
+	{1010}, // TIPO BOOLEAN
+	{1011}, // TIPO VOID
+	{2001,1012}, // VALOR CONS INT
+	{2001,1013}, // VALOR CONS FLOAT
+	{2001,1014}, // VALOR CONS NOTACION
+	{2001,1015}, // VALOR CONS CHAR
+	{2001,1016}, // VALOR CONS STRING
+	{15, 1048, 18, 6, 1052, 16, 1026, 13, 1051, 1005, 1003}, // DECLARA FUNCT
+	{700}, // DECLARA FUNCT
+	{17, 13, 1051, 9}, //PARAMETROS
+	{700}, // PARAMETROS
+	{16, 1053}, //PARAMETROS2
+	{700}, // PARAMETROS2
+	{18, 1054, 19}, //ESTATUTOS
+	{18, 20}, //ESTATUTOS
+	{700}, // ESTATUTOS
+	{21}, //ESTATUTOS-CP
+	{24}, //ESTATUTOS-CP
+	{23}, //ESTATUTOS-CP
+	{22}, //ESTATUTOS-CP
+	{27}, //ESTATUTOS-CP
+	{31}, //ESTATUTOS-SP
+	{34}, //ESTATUTOS-SP
+	{30}, //ESTATUTOS-SP
+	{35}, //ESTATUTOS-SP
+	{29, 2001,1005}, // EST-ASIG-POST
+	{1052, 11, 1026, 1019}, //EST-READ
+	{1052, 25, 1026, 1018}, //EST-WRITE
+	{36, 1017}, //EST-RETURN
+	{26, 36},//PROD-EXPR
+	{25, 1053}, //PROD-EXPR2
+	{700}, // PROD-EXPR2
+	{1005, 28}, //PREINCUARIO
+	{1020}, //OPR
+	{1021}, // OPR
+	{2009,36,2002,1051}, //ID2 '= EXPR'
+	{1020}, // ID2
+	{1021}, // ID2
+	{1056, 1052, 36, 1026, 1049, 18, 1024}, //EST-DO
+	{1044, 33, 32, 18, 1052, 36, 1026, 1022}, //EST-IF
+	{32, 18, 1052, 36, 1026, 1042}, //PROD-ELSEIF
+	{700}, // PROD-ELSEIF
+	{18, 1043}, //PROD-ELSE
+	{700}, // PROD-ELSE
+	{1045, 18, 1052, 36, 1026, 1023}, //EST-WHILE
+	{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025}, //EST-FOR
+	{37, 2004,38}, //EXPR
+	{36, 2006,1028}, //PROD2
+	{2004,700}, // PROD2
+	{39, 2003,40}, //EXPR2
+	{36, 2005,1029}, //PROD3
+	{2003,700}, // PROD3
+	{41}, //EXPR3
+	{41, 1027}, //EXPR3
+	{42, 43}, //EXPR4
+	{43, 48}, //PROD4
+	{700}, // PROD4
+	{44,2004,46}, //EXPR5
+	{43,45}, //PROD5    voy a quitar el 2006
+	{2004,700}, // PROD5
+	{2006,1036}, //PROD-SIGNO
+	{2006,1037}, // PROD-SIGNO
+	{700}, // PROD-SIGNO
+	{47, 2003,49}, //TERM
+	{46, 2005,1038}, //PROD6
+	{46, 2005,1039}, // PROD6
+	{46, 2005,1040}, // PROD6
+	{46, 2005,1041}, // PROD6
+	{2003,700}, // PROD6
+	{1030}, //OPREL
+	{1031}, // OPREL
+	{1032}, // OPREL
+	{1033}, // OPREL
+	{1034}, // OPREL
+	{1035}, // OPREL
+	{50, 2001,1005},//FACT
+	{2002,14}, // FACT
+	{2008,1052,36, 2007,1026}, //FACT
+	{1052, 51, 1026}, //LLAMADA-F
+	{ 700 }, // LLAMADA-F
+	{52, 1005}, //PROD-LLAMADA
+	{700}, //PROD-LLAMADA
+	{51, 1053}, //PROD7
+	{ 700 }, // PROD7
+	{ 12, 1005 }, //PRDO-ID5
+	{11, 1053},//PROD-ID6
+	{700}, //PROD-ID6
 };
 
 std::vector <std::vector <int>> prodSem = {
@@ -338,6 +347,9 @@ int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,1
 #pragma endregion
 
 #pragma region Funciones
+
+
+
 char Leer_Caracter(System::String^ codespace) {
 
 	if (index >= 0 && index < codespace->Length) {
@@ -512,12 +524,98 @@ enum ColumnasPredictiva {
 	eof = 59 // $ (fin de archivo)
 };
 
+enum ReglasTipos {
+	int_int = 10,
+	int_float = 11,
+	float_int = 12,
+	float_float = 13,
+	forzarPermitido = 50,
+	noPermitido = 99
+};
+
+void iniciarReglas() {
+	mapaTipos["int_int"] = ReglasTipos::int_int;
+	mapaTipos["int_float"] = ReglasTipos::int_float;
+	mapaTipos["int_char"] = ReglasTipos::noPermitido;
+	mapaTipos["int_string"] = ReglasTipos::noPermitido;
+	mapaTipos["int_bool"] = ReglasTipos::noPermitido;
+	mapaTipos["float_int"] = ReglasTipos::float_int;
+	mapaTipos["float-float"] = ReglasTipos::float_float;
+	mapaTipos["float_char"] = ReglasTipos::noPermitido;
+	mapaTipos["float_string"] = ReglasTipos::noPermitido;
+	mapaTipos["float_bool"] = ReglasTipos::noPermitido;
+	mapaTipos["char_int"] = ReglasTipos::noPermitido;
+	mapaTipos["char_float"] = ReglasTipos::noPermitido;
+	mapaTipos["char_char"] = ReglasTipos::noPermitido;
+	mapaTipos["char_string"] = ReglasTipos::noPermitido;
+	mapaTipos["char_bool"] = ReglasTipos::noPermitido;
+	mapaTipos["string_int"] = ReglasTipos::noPermitido;
+	mapaTipos["string_float"] = ReglasTipos::noPermitido;
+	mapaTipos["string_char"] = ReglasTipos::noPermitido;
+	mapaTipos["string_string"] = ReglasTipos::noPermitido;
+	mapaTipos["string_bool"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_int"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_float"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_char"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_string"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_bool"] = ReglasTipos::noPermitido;
+
+	tiposPermitidos[ReglasTipos::int_int] = true;
+	tiposPermitidos[ReglasTipos::int_float] = true;
+	tiposPermitidos[ReglasTipos::float_int] = true;
+	tiposPermitidos[ReglasTipos::float_float] = true;
+	//AQUI PODEMOS FORZAR OTRAS REGLAS EN CASO DE SER NECESARIO
+	tiposPermitidos[ReglasTipos::forzarPermitido] = true;
+	tiposPermitidos[ReglasTipos::noPermitido] = false;
+
+}
+
+int compTipos(std::string& tipo1, std::string& tipo2) {
+	std::string regla = tipo1 + "_" + tipo2; // Contruimos una regla con los tipos que nos envien de donde se llame la funcion
+
+	//Vamos a verificar si esta regla existe en el mapa de tipos
+	if (mapaTipos.count(regla)) {
+		return mapaTipos.at(regla); // Si existe retornamos el valor asociado a esa regla
+	}
+		return ReglasTipos::noPermitido; // Si no existe retornamos que no es permitido
+}
+
+bool esTipoPermitido(int regla) { // El parametro que le vamos a mandar es el de la regla que nos retorno la funcion compTipos
+	if (tiposPermitidos.count(regla)) {
+		return tiposPermitidos.at(regla); // Retornamos si es permitido o no
+	}
+	return false; // Si no existe la regla retornamos false
+}
+
+string TipoResultante(int numReglaTipo, std::string& opr) {
+	std::cout << numReglaTipo << std::endl;
+	if (numReglaTipo == ReglasTipos::int_int) { // Verifica que ambos tipos sean enteros
+		if(opr == "+" || opr == "-" || opr == "*")
+			return "int";
+		else if (opr == "/") // En la division de enteros el resultado es float
+			return "float";
+	}
+	else if (numReglaTipo == ReglasTipos::int_float || numReglaTipo == ReglasTipos::float_int || numReglaTipo == ReglasTipos::float_float) {
+		if (opr == "+" || opr == "-" || opr == "*" || opr == "/")
+			return "float"; // Si alguno de los dos es float el resultado es float
+	}
+	else if (numReglaTipo == ReglasTipos::noPermitido) {
+		if(opr == "+" || opr == "-" || opr == "*" || opr == "/")
+			return "float"; // Por default retornamos float en caso de error que seria un parche para seguir con la compilacion
+	}
+
+	return "float"; // Por default retornamos float en caso de error que seria un parche para seguir con la compilacion
+}
+
 #pragma endregion
 
 #pragma region Semantico
 void AccionId1(const std::string& lexema) {
-	if (tablaSimbolos.count(lexema)) // El identificador ya existe en la tabla de símbolos
-		std::cerr << "Error: Identificador '" << lexema << "' ya declarado." << std::endl;
+	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de símbolos
+		ERRSEM = "Identificador '" + lexema + "' ya declarado.";
+		std::cout << "Error Semantico:" << ERRSEM << std::endl;
+		ErroresSemanticos.push_back(ERRSEM);
+	}
 	else
 		pilaLexemas.push_back(lexema);
 }
@@ -748,7 +846,7 @@ static Tokenizador GetNextToken(System::String^ codespace)
 					Token(edo);
 					token.gramema = TOKEN;
 					palabraTemp = Palabra;
-					AccionId1(token.lexema);
+					//AccionId1(token.lexema);
 					Palabra = "";
 					return token;
 				}
@@ -838,6 +936,159 @@ static Tokenizador GetNextToken(System::String^ codespace)
 }
 
 #pragma endregion
+
+#pragma region Acciones Semánticas
+
+void accionesSemanticas(int produccion, std::string lex) {
+	int numAccion = 0;
+	std::string R = "";
+	bool errorAccion = true;
+	switch (produccion) {
+	//case 2000:
+		//AccionId1(lex); // Guarda el lexema en la pila de lexemas
+		//break;
+	case 2001: //PUSH pila_tipos (pos_actual) el tipo de la variable.  // pos_actual + 1
+
+		if (tablaSimbolos.count(lex)) { // Verifica si el lexema existe en la tabla de simbolos
+			const Simbolos& simbolo = tablaSimbolos.at(lex); // Va a traer toda la informacion que se encuentre en la tabla de simbolos con ese lexema
+			pilaTipos.push(simbolo.Tipo);
+			pilaOperandos.push(lex);
+		}
+		else { // El identificador no existe en la tabla de simbolos
+			errorAccion = false;
+		}
+		//cont_direcc++;
+		if (!errorAccion) {
+			pilaLexemas.push_back(lex);
+			AccionId2("float"); // si no existe lo declara como float por default
+			ERRSEM = "Variable" + lex + "no definida"; // Error semantico por variable no definida
+			std::cout << "Error Semantico: " << ERRSEM << std::endl;
+			pilaTipos.push("float");
+			pilaOperandos.push(lex);
+
+			ErroresSemanticos.push_back(ERRSEM);
+		}
+		break;
+	case 2002: // PUSH pila_opreadores (pos_actual) pos_actual +1
+		pilaOpr.push(lex);
+		break;
+	case 2003: // Mientras exista en el tope *, /...
+		if (!pilaOpr.empty()) {
+			std::string opr = pilaOpr.top();
+			if (opr == "*" || opr == "/" || opr == "%") {
+				pilaOpr.pop();
+				// Me falta agregar el operador de potencia
+				if (pilaTipos.empty()) return;
+				std::string tipo2 = pilaTipos.top();
+				pilaTipos.pop();
+
+				if (pilaTipos.empty()) return;
+				std::string tipo1 = pilaTipos.top();
+				pilaTipos.pop();
+
+				if (pilaOperandos.empty()) return;
+				pilaOperandos.pop();
+				if (pilaOperandos.empty()) return;
+				pilaOperandos.pop();
+
+				std::cout << "Operacion: " << tipo1 << " " << opr << " " << tipo2 << std::endl;
+				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
+				if (esPermitido) {
+					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
+					pilaTipos.push(resultadoTipo);
+					R = "R" + std::to_string(cont_resultado);
+					cont_resultado++;
+					pilaOperandos.push(R);
+				}
+				else {
+					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
+					R = "R" + std::to_string(cont_resultado);
+					cont_resultado++;
+					pilaOperandos.push(R);
+					ERRSEM = "Error semantico entre tipos ' " + tipo1 +" " + opr + " " + tipo2;
+					ErroresSemanticos.push_back(ERRSEM);
+				}
+			}
+		}
+		else
+			std::cout << "Pila de operadores vacia" << std::endl;
+		break;
+	case 2004: // Mientras exista en el tope +, -...
+		if (!pilaOpr.empty()) {
+			std::string opr = pilaOpr.top();
+			if (opr == "+" || opr == "-" || opr == "||") {
+				pilaOpr.pop();
+				if (pilaTipos.empty()) return;
+				std::string tipo2 = pilaTipos.top();
+				pilaTipos.pop();
+				if (pilaTipos.empty()) return;
+				std::string tipo1 = pilaTipos.top();
+				pilaTipos.pop();
+				if (pilaOperandos.empty()) return;
+				pilaOperandos.pop();
+				if (pilaOperandos.empty()) return;
+				pilaOperandos.pop();
+				std::cout << "Operacion: " << tipo1 << opr << " " << tipo2 << std::endl;
+				bool prueba = compTipos(tipo1,tipo2);
+				std::cout << "PRUEBA: " << prueba << std::endl;
+				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
+				if (esPermitido) {
+					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
+					pilaTipos.push(resultadoTipo);
+					R = "R" + std::to_string(cont_resultado);
+					cont_resultado++;
+					pilaOperandos.push(R);
+				}
+				else {
+					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
+					R = "R" + std::to_string(cont_resultado);
+					cont_resultado++;
+					pilaOperandos.push(R);
+					ERRSEM = "Error semantico entre tipos '" + tipo1 + "' no es igual a '" + tipo2;
+					std::cout << ERRSEM << std::endl;
+					ErroresSemanticos.push_back(ERRSEM);
+				}
+			}
+			else {
+				std::cout << "Operador en tope no es +, -, ||" << std::endl;
+			}
+		}
+		else
+			std::cout << "Pila de operadores vacia" << std::endl;
+		break;
+	case 2005: // Lo que sigue en la entrada es *,/,%, AND ...
+		pilaOpr.push(lex);
+		break;
+	case 2006: // Lo que sigue en la entrada es +,-, OR ...
+		pilaOpr.push(lex);
+		break;
+	case 2007: // Insertar Marca de fondo falso
+		pilaOpr.push("MFF");
+		break;
+	case 2008: // Eliminar Marca de fondo falso
+		pilaOpr.pop();
+		break;
+	case 2009: // Si existe un := en el tope de la pila
+		if (pilaTipos.empty()) return;
+		std::string tipo2 = pilaTipos.top();
+		pilaTipos.pop();
+		if (pilaTipos.empty()) return;
+		std::string tipo1 = pilaTipos.top();
+		pilaTipos.pop();
+		if (tipo2 == tipo1) { 
+			pilaOpr.pop(); // Sacamos el :=
+		}
+		else {
+			ERRSEM = "Error semantico entre tipos: tipo '" + tipo1 + "' no es igual a '" + tipo2 + "'";
+			std::cout << ERRSEM << std::endl;
+			ErroresSemanticos.push_back(ERRSEM);
+			pilaOpr.pop(); // Sacamos el :=
+		}
+		break;
+	}
+}
+
+#pragma endregion 
 
 #pragma region Sintactico
 int relacionaTokenMatrizPre(int estadoLex, std::string palabra) {
@@ -1145,33 +1396,57 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				errorG.push_back(errorcito); // Agregar el error a la lista de errores
 			}
 		}
-		if (PilaSintactico.top() >= 1000 && PilaSintactico.top() <= 1059) {
+		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2009) {
+			int numP = PilaSintactico.top();
+			PilaSintactico.pop();
 
-			if (PilaSintactico.top() == colPre) {
-
-				int token_id = PilaSintactico.top();
-				if (token_id >= 1006 && token_id <= 1011) { // Si es un tipo de dato desde int hasta void
-					AccionId2(tokencito.lexema);
-				}
-
-				PilaSintactico.pop();
-				tokensA.push_back(tokencito); // Agregar el token a la lista de tokens aceptados
-				if (cont_cadena+1 == codespace->Length) {
-					TerminaTexto = true;
-				}
-				tokencito = GetNextToken(codespace); // Avanzar al siguiente token
-				relacionaTokenMatrizPre(tokencito.edo, palabraTemp);
+			/*if (numP == 2000) {
+				if (!lexema_id.empty()) {
+					accionesSemanticas(numP, lexema_id);
+					lexema_id = "";
+				}	
 			}
-			else {
-				// Error de sintaxis, token inesperado
-				ErroresSin(tokencito.edo); // Fin de archivo inesperado
-				errorcito.edo = tokencito.edo;
-				System::String^ managed_string = gcnew System::String(ERRSIN.c_str());
-				errorcito.Mensaje = msclr::interop::marshal_as<string>(managed_string);
-				errorG.push_back(errorcito);
-				break;
-				//return;
-			}
+			else */
+			accionesSemanticas(numP, TokenTem);
+			
+		}
+		else if (PilaSintactico.top() >= 1000 && PilaSintactico.top() <= 1059) {
+
+				if (PilaSintactico.top() == colPre) {
+
+					int token_id = PilaSintactico.top();
+					if (token_id == 1001) // si es la palabra def
+						esDeclaracion = true;
+					if (token_id == 1005) { // Si es un identificador
+						if(esDeclaracion)
+							//lexema_id = tokencito.lexema;
+							AccionId1(tokencito.lexema);
+					}
+					else
+					if (token_id >= 1006 && token_id <= 1011) { // Si es un tipo de dato desde int hasta void
+						AccionId2(tokencito.lexema);
+						esDeclaracion = false;
+					}
+
+					TokenTem = tokencito.lexema;
+					PilaSintactico.pop();
+					tokensA.push_back(tokencito); // Agregar el token a la lista de tokens aceptados
+					if (cont_cadena+1 == codespace->Length) {
+						TerminaTexto = true;
+					}
+					tokencito = GetNextToken(codespace); // Avanzar al siguiente token
+					relacionaTokenMatrizPre(tokencito.edo, palabraTemp);
+				}
+				else {
+					// Error de sintaxis, token inesperado
+					ErroresSin(tokencito.edo); // Fin de archivo inesperado
+					errorcito.edo = tokencito.edo;
+					System::String^ managed_string = gcnew System::String(ERRSIN.c_str());
+					errorcito.Mensaje = msclr::interop::marshal_as<string>(managed_string);
+					errorG.push_back(errorcito);
+					break;
+					//return;
+				}
 		}
 	}
 	if (PilaSintactico.top() == 1059) {
@@ -1213,13 +1488,16 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 
 
 
+
 [STAThreadAttribute]
 void main()
 {
 	Application::EnableVisualStyles();
 	Application::SetCompatibleTextRenderingDefault(false);
 	// Create the main window and run it
+	iniciarReglas();
 	TalosV3::Interfaz form;
 	Application::Run(% form);
+	
 }
 
