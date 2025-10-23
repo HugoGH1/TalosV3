@@ -428,7 +428,7 @@ void iniciarReglas() {
 	mapaTipos["int_string"] = ReglasTipos::noPermitido;
 	mapaTipos["int_bool"] = ReglasTipos::noPermitido;
 	mapaTipos["float_int"] = ReglasTipos::float_int;
-	mapaTipos["float-float"] = ReglasTipos::float_float;
+	mapaTipos["float_float"] = ReglasTipos::float_float;
 	mapaTipos["float_char"] = ReglasTipos::noPermitido;
 	mapaTipos["float_string"] = ReglasTipos::noPermitido;
 	mapaTipos["float_bool"] = ReglasTipos::noPermitido;
@@ -932,7 +932,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
 					pilaOperandos.push(R);
-					ERRSEM = "Error semantico entre tipos '" + tipo1 + "' no es igual a '" + tipo2;
+					ERRSEM = "Error semantico entre tipos '" + tipo1 + opr + tipo2;
 					std::cout << ERRSEM << std::endl;
 					ErroresSemanticos.push_back(ERRSEM);
 				}
@@ -1223,6 +1223,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	form->TokenSpace->Clear();
 	form->ErrorsSpaces->Clear();
 	tablaSimbolos.clear();
+	ErroresSemanticos.clear();
 
 	bool esNoTerminal = false, error = false, TerminaTexto = false;
 	MostrarError errorcito;
@@ -1304,7 +1305,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				if (PilaSintactico.top() == colPre) {
 
 					int token_id = PilaSintactico.top();
-					if (token_id == 1001 || token_id == 1002) // si es la palabra def o const
+					if (token_id == 1001 ) // si es la palabra def  || token_id == 1002
 						esDeclaracion = true;
 					if (token_id == 1005) { // Si es un identificador
 						if(esDeclaracion)
@@ -1317,6 +1318,35 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 						AccionId2(tokencito.lexema);
 						esDeclaracion = false;
 					}
+
+					/*if (token_id >= 1012 && token_id <= 1016) {
+						if (token_id == 1012) {
+							tokencito.lexema = "int";
+							AccionId2(tokencito.lexema);
+							esDeclaracion = false;
+						}
+						else if (token_id == 1013) {
+							tokencito.lexema = "float";
+							AccionId2(tokencito.lexema);
+							esDeclaracion = false;
+						}
+						else if (token_id == 1014) {
+							tokencito.lexema = "float";
+							AccionId2(tokencito.lexema);
+							esDeclaracion = false;
+						}
+						else if (token_id == 1015) {
+							tokencito.lexema = "char";
+							AccionId2(tokencito.lexema);
+							esDeclaracion = false;
+						}
+						else if (token_id == 1016) {
+							tokencito.lexema = "string";
+							AccionId2(tokencito.lexema);
+							esDeclaracion = false;
+						}
+					
+					} */
 
 					TokenTem = tokencito.lexema;
 					PilaSintactico.pop();
@@ -1372,6 +1402,10 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 		System::String^ message = gcnew System::String(errorcito.Mensaje.c_str());
 		form->ErrorsSpaces->AppendText("Error: "+ codeError+". "+ message);
 	}
+	/*for (int i = 0; i <= ErroresSemanticos.size(); i++) {
+		System::String^ ErrorSemantico = gcnew System::String(ErroresSemanticos[i].c_str());
+		form->ErrorsSpaces->AppendText(ErrorSemantico);
+	} */
 }
 
 #pragma endregion
