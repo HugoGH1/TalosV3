@@ -228,118 +228,6 @@ std::vector <std::vector <int>> producciones = {
 	{700}, //PROD-ID6
 };
 
-std::vector <std::vector <int>> prodSem = {
-	{4, 2, 3},
-	{2, 6},
-	{2, 5},
-	{2, 15},
-	{700},
-	{3, 1054, 1057, 1058, 1005, 1000},
-	{700},
-	{1047, 18, 1004},
-	{5, 1054, 14, 1051, 1005, 1002},
-	{700},
-	{6, 1054, 13, 1050, 7, 1001},
-	{8, 2030,1005},
-	{7, 2030,1053},
-	{700},
-	{10,2030,1005},
-	{9, 2030,1053},
-	{700},
-	{700},
-	{1006},
-	{1007},
-	{1008},
-	{1009},
-	{1010},
-	{1011},
-	{1012},
-	{1013},
-	{1014},
-	{1015},
-	{1016},
-	{15, 1048, 18, 6, 1052, 16, 1026, 13, 1051, 1005, 1003},
-	{700},
-	{17, 13, 1051, 9},
-	{700},
-	{16, 1053},
-	{700},
-	{18, 1054, 19},
-	{18, 20},
-	{700},
-	{21},
-	{24},
-	{23},
-	{22},
-	{27},
-	{31},
-	{34},
-	{30},
-	{35},
-	{29, 1005},
-	{1052, 11, 1026, 1019},
-	{1052, 25, 1026, 1018},
-	{36, 1017},
-	{26, 36},
-	{25, 1053},
-	{700},
-	{1005, 28},
-	{1020},
-	{1021},
-	{36, 1051},
-	{1020},
-	{1021},
-	{1056, 1052, 36, 1026, 1049, 18, 1024},
-	{1044, 33, 32, 18, 1052, 36, 1026, 1022},
-	{32, 18, 1052, 36, 1026, 1042},
-	{700},
-	{18, 1043},
-	{700},
-	{1045, 18, 1052, 36, 1026, 1023},
-	{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025},
-	{37, 38},
-	{36, 1028},
-	{700},
-	{39, 40},
-	{36, 1029},
-	{700},
-	{41},
-	{41, 1027},
-	{42, 43},
-	{43, 48},
-	{700},
-	{44, 46},
-	{43, 45},
-	{700},
-	{1036},
-	{1037},
-	{700},
-	{47, 49},
-	{46, 1038},
-	{46, 1039},
-	{46, 1040},
-	{46, 1041},
-	{700},
-	{1030},
-	{1031},
-	{1032},
-	{1033},
-	{1034},
-	{1035},
-	{50, 1005},
-	{14},
-	{1052, 36, 1026},
-	{1052, 51, 1026},
-	{700},
-	{52, 1005},
-	{0},
-	{51, 1053},
-	{700},
-	{12, 1005},
-	{11, 1053},
-	{700},
-};
-
 std::string PalabrasReservadas[31] = {"include","lib","endlib","class","endclass","int","float","char","string","bool","void","if","elseif","else","endif","do","enddo","while","endwhile","read","write","def","const","of","dowhile","for","endfor","function","endfunction","return","to"};
 
 int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,107};
@@ -612,13 +500,13 @@ string TipoResultante(int numReglaTipo, std::string& opr) {
 #pragma region Semantico
 void AccionId1(const std::string& lexema) {
 	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de símbolos
-		ERRSEM = "Identificador '" + lexema + "' ya declarado.";
-		std::cout << "Error Semantico:" << ERRSEM << std::endl;
+		ERRSEM = "Identificador ' " + lexema + "' ya declarado.";
+		std::cout << "Error Semantico: " << ERRSEM << std::endl;
 		ErroresSemanticos.push_back(ERRSEM);
 	}
 	else
 		pilaLexemas.push_back(lexema);
-}
+} // def x,f,c,v of int
 
 void AccionId2(const std::string& tipo) {
 	while (!pilaLexemas.empty()) {
@@ -961,7 +849,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 		if (!errorAccion) {
 			pilaLexemas.push_back(lex);
 			AccionId2("float"); // si no existe lo declara como float por default
-			ERRSEM = "Variable" + lex + "no definida"; // Error semantico por variable no definida
+			ERRSEM = "Variable " + lex + " no definida"; // Error semantico por variable no definida
 			std::cout << "Error Semantico: " << ERRSEM << std::endl;
 			pilaTipos.push("float");
 			pilaOperandos.push(lex);
@@ -1011,7 +899,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 			}
 		}
 		else
-			std::cout << "Pila de operadores vacia" << std::endl;
+			//std::cout << "Pila de operadores vacia" << std::endl;
 		break;
 	case 2004: // Mientras exista en el tope +, -...
 		if (!pilaOpr.empty()) {
@@ -1050,7 +938,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 				}
 			}
 			else {
-				std::cout << "Operador en tope no es +, -, ||" << std::endl;
+				//std::cout << "Operador en tope no es +, -, ||" << std::endl;
 			}
 		}
 		else
@@ -1334,7 +1222,8 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	form->SintaxisSpace->Clear();
 	form->TokenSpace->Clear();
 	form->ErrorsSpaces->Clear();
-	
+	tablaSimbolos.clear();
+
 	bool esNoTerminal = false, error = false, TerminaTexto = false;
 	MostrarError errorcito;
 
@@ -1415,7 +1304,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				if (PilaSintactico.top() == colPre) {
 
 					int token_id = PilaSintactico.top();
-					if (token_id == 1001) // si es la palabra def
+					if (token_id == 1001 || token_id == 1002) // si es la palabra def o const
 						esDeclaracion = true;
 					if (token_id == 1005) { // Si es un identificador
 						if(esDeclaracion)
@@ -1423,7 +1312,8 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 							AccionId1(tokencito.lexema);
 					}
 					else
-					if (token_id >= 1006 && token_id <= 1011) { // Si es un tipo de dato desde int hasta void
+					if ((token_id >= 1006 && token_id <= 1011)) { // Si es un tipo de dato desde int hasta void
+						
 						AccionId2(tokencito.lexema);
 						esDeclaracion = false;
 					}
