@@ -28,10 +28,11 @@ std::unordered_map<std::string, int> mapaTipos;
 std::unordered_map<int, bool> tiposPermitidos;
 
 std::vector<std::string> pilaLexemas;
-std::vector<std::string> ErroresSemanticos;
 std::stack<std::string> pilaTipos;
 std::stack<std::string> pilaOpr;
 std::stack<std::string> pilaOperandos;
+std::vector<std::string> ErroresSemanticos;
+
 int matriz[26][32] = {
 	{  1,  2,  3,506,506,  0,  0,  0,134,  2,  1, 19, 20,  9, 10, 11, 12, 13, 14, 15, 17,127,119,120,121,122,124,123, 21, 25,128,508}, //q0
 	{  1,  2,  2,  2,100,100,100,100,100,  2,  1,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,508}, //q1
@@ -236,8 +237,6 @@ int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,1
 
 #pragma region Funciones
 
-
-
 char Leer_Caracter(System::String^ codespace) {
 
 	if (index >= 0 && index < codespace->Length) {
@@ -424,14 +423,14 @@ enum ReglasTipos {
 void iniciarReglas() {
 	mapaTipos["int_int"] = ReglasTipos::int_int;
 	mapaTipos["int_float"] = ReglasTipos::int_float;
-	mapaTipos["int_char"] = ReglasTipos::noPermitido;
-	mapaTipos["int_string"] = ReglasTipos::noPermitido;
-	mapaTipos["int_bool"] = ReglasTipos::noPermitido;
+	//mapaTipos["int_char"] = ReglasTipos::noPermitido;
+	//mapaTipos["int_string"] = ReglasTipos::noPermitido;
+	//mapaTipos["int_bool"] = ReglasTipos::noPermitido;
 	mapaTipos["float_int"] = ReglasTipos::float_int;
 	mapaTipos["float_float"] = ReglasTipos::float_float;
-	mapaTipos["float_char"] = ReglasTipos::noPermitido;
-	mapaTipos["float_string"] = ReglasTipos::noPermitido;
-	mapaTipos["float_bool"] = ReglasTipos::noPermitido;
+	//mapaTipos["float_char"] = ReglasTipos::noPermitido;
+	//mapaTipos["float_string"] = ReglasTipos::noPermitido;
+	/*mapaTipos["float_bool"] = ReglasTipos::noPermitido;
 	mapaTipos["char_int"] = ReglasTipos::noPermitido;
 	mapaTipos["char_float"] = ReglasTipos::noPermitido;
 	mapaTipos["char_char"] = ReglasTipos::noPermitido;
@@ -446,7 +445,7 @@ void iniciarReglas() {
 	mapaTipos["bool_float"] = ReglasTipos::noPermitido;
 	mapaTipos["bool_char"] = ReglasTipos::noPermitido;
 	mapaTipos["bool_string"] = ReglasTipos::noPermitido;
-	mapaTipos["bool_bool"] = ReglasTipos::noPermitido;
+	mapaTipos["bool_bool"] = ReglasTipos::noPermitido; */
 
 	tiposPermitidos[ReglasTipos::int_int] = true;
 	tiposPermitidos[ReglasTipos::int_float] = true;
@@ -495,35 +494,21 @@ string TipoResultante(int numReglaTipo, std::string& opr) {
 	return "float"; // Por default retornamos float en caso de error que seria un parche para seguir con la compilacion
 }
 
-#pragma endregion
-
-#pragma region Semantico
-void AccionId1(const std::string& lexema) {
-	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de símbolos
-		ERRSEM = "Identificador ' " + lexema + "' ya declarado.";
-		std::cout << "Error Semantico: " << ERRSEM << std::endl;
-		ErroresSemanticos.push_back(ERRSEM);
+void VaciarStack() {
+	while (!pilaTipos.empty()) {
+		pilaTipos.pop();
 	}
-	else
-		pilaLexemas.push_back(lexema);
-} // def x,f,c,v of int
-
-void AccionId2(const std::string& tipo) {
-	while (!pilaLexemas.empty()) {
-		std::string lexema_act = pilaLexemas.back();
-		pilaLexemas.pop_back();
-
-		int nuevaDirecc = cont_direcc++;
-		Simbolos nuevoSimbolo = { tipo, nuevaDirecc };
-
-		if (!tablaSimbolos.count(lexema_act))  // Insertar en la tabla de simbolos solo si no hay redeclaracion
-			tablaSimbolos.emplace(lexema_act, nuevoSimbolo);
+	while (!pilaOpr.empty()) {
+		pilaOpr.pop();
+	}
+	while (!pilaOperandos.empty()) {
+		pilaOperandos.pop();
 	}
 }
 
 #pragma endregion
 
-#pragma region Lexico
+#pragma region Léxico
 void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 {
 	System::String^ codespace = form->CodeSpace->Text;
@@ -711,41 +696,26 @@ static Tokenizador GetNextToken(System::String^ codespace)
 					}
 				}
 
-				// AQUI DEBEMOS PONER LA PARTE DONDE ES UNA RESERVADA PERO DEBEMOS COMPARAR EL EDO CON LOS TIPOS DISPONIBLES PARA LUEGO MANDAR A LLAMAR A AccionId2
-				/*if (esReservada && (edo == 100)) {
-					if (palabraTemp == "int" || palabraTemp == "float" || palabraTemp == "char" || palabraTemp == "string" || palabraTemp == "bool" || palabraTemp == "void") {
-						AccionId2(palabraTemp);
-					}
-				}*/
-
-
 				if (!esReservada && !Palabra.empty()) {
 					edo = 101; // Si no es una palabra reservada, se considera un identificador
 					Token(edo); // Es para enviar el token como identificador
-					//longitud = index - ap_ini;
-					//System::String^ lex = codespace->Substring(ap_ini, longitud)->Trim();
 					token.edo = edo;
 					System::String^ lex = "";
 					for (int i = ap_ini; i < index; ++i)
 						lex += codespace[i];
 					lex = lex->Trim();
 					token.lexema = msclr::interop::marshal_as<string>(lex);
-					//token.lexema = msclr::interop::marshal_as<string>(lex);
 					Token(edo);
 					token.gramema = TOKEN;
 					palabraTemp = Palabra;
-					//AccionId1(token.lexema);
 					Palabra = "";
 					return token;
 				}
 
 			}
 			else {
-				Token(edo); // estado de aceptación, entera, flotante
-				//longitud = index - ap_ini;
-				//System::String^ lex = codespace->Substring(ap_ini, longitud)->Trim();
+				Token(edo); // estado de aceptación, entera, flotante				
 				token.edo = edo;
-				//token.lexema = msclr::interop::marshal_as<string>(lex);
 				Token(edo);
 				System::String^ lex = "";
 				for (int i = ap_ini; i < index; ++i)
@@ -759,8 +729,6 @@ static Tokenizador GetNextToken(System::String^ codespace)
 			}
 		}
 		else if (edo >= 500 && edo <= 510) {
-			//longitud = index - ap_ini;
-			//System::String^ lex = codespace->Substring(ap_ini, longitud)->Trim();
 			System::String^ lex = "";
 			for (int i = ap_ini; i < index; ++i)
 				lex += codespace[i];
@@ -825,6 +793,42 @@ static Tokenizador GetNextToken(System::String^ codespace)
 
 #pragma endregion
 
+#pragma region Semántico
+void AccionId1(const std::string& lexema) {
+	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de símbolos
+		ERRSEM = "Error Semantico: Duplicidad de variable: '" + lexema + "' ya definida.";
+		std::cout << "Error Semantico: " << ERRSEM << std::endl;
+		ErroresSemanticos.push_back(ERRSEM);
+	}
+	else
+		pilaLexemas.push_back(lexema);
+} // def x,f,c,v of int
+
+void AccionId2(const std::string& tipo) {
+	while (!pilaLexemas.empty()) {
+		std::string lexema_act = pilaLexemas.back();
+		pilaLexemas.pop_back();
+
+		int nuevaDirecc = cont_direcc++;
+		Simbolos nuevoSimbolo = { tipo, nuevaDirecc };
+
+		if (!tablaSimbolos.count(lexema_act))  // Insertar en la tabla de simbolos solo si no hay redeclaracion
+			tablaSimbolos.emplace(lexema_act, nuevoSimbolo);
+	}
+}
+
+void AccionConst1(const std::string& lexema) {
+	if (tablaSimbolos.count(lexema)) { // La constante ya existe en la tabla de símbolos
+		ERRSEM = "Constante: ' " + lexema + "' ya definida.";
+		std::cout << "Error Semantico: " << ERRSEM << std::endl;
+		ErroresSemanticos.push_back(ERRSEM);
+	}
+	else
+		pilaLexemas.push_back(lexema);
+}
+
+#pragma endregion
+
 #pragma region Acciones Semánticas
 
 void accionesSemanticas(int produccion, std::string lex) {
@@ -832,9 +836,9 @@ void accionesSemanticas(int produccion, std::string lex) {
 	std::string R = "";
 	bool errorAccion = true;
 	switch (produccion) {
-	//case 2000:
-		//AccionId1(lex); // Guarda el lexema en la pila de lexemas
-		//break;
+		//case 2000:
+			//AccionId1(lex); // Guarda el lexema en la pila de lexemas
+			//break;
 	case 2001: //PUSH pila_tipos (pos_actual) el tipo de la variable.  // pos_actual + 1
 
 		if (tablaSimbolos.count(lex)) { // Verifica si el lexema existe en la tabla de simbolos
@@ -849,8 +853,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 		if (!errorAccion) {
 			pilaLexemas.push_back(lex);
 			AccionId2("float"); // si no existe lo declara como float por default
-			ERRSEM = "Variable " + lex + " no definida"; // Error semantico por variable no definida
-			std::cout << "Error Semantico: " << ERRSEM << std::endl;
+			ERRSEM = "Error Semantico: Variable " + lex + " no definida"; // Error semantico por variable no definida
 			pilaTipos.push("float");
 			pilaOperandos.push(lex);
 
@@ -893,14 +896,14 @@ void accionesSemanticas(int produccion, std::string lex) {
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
 					pilaOperandos.push(R);
-					ERRSEM = "Error semantico entre tipos ' " + tipo1 +" " + opr + " " + tipo2;
+					ERRSEM = "Error semantico: Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
 					ErroresSemanticos.push_back(ERRSEM);
 				}
 			}
 		}
 		else
 			//std::cout << "Pila de operadores vacia" << std::endl;
-		break;
+			break;
 	case 2004: // Mientras exista en el tope +, -...
 		if (!pilaOpr.empty()) {
 			std::string opr = pilaOpr.top();
@@ -917,7 +920,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 				if (pilaOperandos.empty()) return;
 				pilaOperandos.pop();
 				std::cout << "Operacion: " << tipo1 << opr << " " << tipo2 << std::endl;
-				bool prueba = compTipos(tipo1,tipo2);
+				bool prueba = compTipos(tipo1, tipo2);
 				std::cout << "PRUEBA: " << prueba << std::endl;
 				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
 				if (esPermitido) {
@@ -932,7 +935,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
 					pilaOperandos.push(R);
-					ERRSEM = "Error semantico entre tipos '" + tipo1 + opr + tipo2;
+					ERRSEM = "Error semantico : Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
 					std::cout << ERRSEM << std::endl;
 					ErroresSemanticos.push_back(ERRSEM);
 				}
@@ -963,7 +966,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 		if (pilaTipos.empty()) return;
 		std::string tipo1 = pilaTipos.top();
 		pilaTipos.pop();
-		if (tipo2 == tipo1) { 
+		if (tipo2 == tipo1) {
 			pilaOpr.pop(); // Sacamos el :=
 		}
 		else {
@@ -978,7 +981,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 
 #pragma endregion 
 
-#pragma region Sintactico
+#pragma region Sintáctico
 int relacionaTokenMatrizPre(int estadoLex, std::string palabra) {
 	int indiceColumnaMatriz = -1;
 
@@ -1214,7 +1217,11 @@ std::vector <MostrarError> errorG;
 void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	System::String^ codespace = form->CodeSpace->Text;
 	std::stack<int> PilaSintactico;
-	errorG.clear(); 
+	VaciarStack();
+	bool esConstante = false;
+	int token_id;
+	std::string lexConst;
+	errorG.clear();
 	tokensA.clear();
 	cont_cadena = 0;
 	index = 0;
@@ -1224,6 +1231,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	form->ErrorsSpaces->Clear();
 	tablaSimbolos.clear();
 	ErroresSemanticos.clear();
+
 
 	bool esNoTerminal = false, error = false, TerminaTexto = false;
 	MostrarError errorcito;
@@ -1272,7 +1280,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 					PilaSintactico.pop();
 					//sacar tope de pila que es la produccion que se va a vaciar
 
-					for (int elemento : producciones[numprod-1])
+					for (int elemento : producciones[numprod - 1])
 					{
 						PilaSintactico.push(elemento);
 					}
@@ -1286,87 +1294,88 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				errorG.push_back(errorcito); // Agregar el error a la lista de errores
 			}
 		}
+		else if (PilaSintactico.top() >= 1000 && PilaSintactico.top() <= 1059) {
+
+			if (PilaSintactico.top() == colPre) {
+
+				token_id = PilaSintactico.top();
+				if (token_id == 1001) // si es la palabra def  || token_id == 1002
+					esDeclaracion = true;
+				if (token_id == 1002) { // si es la palabra const
+					esConstante = true;
+				}
+				if (token_id == 1005) { // Si es un identificador
+					if (esDeclaracion)
+						AccionId1(tokencito.lexema);
+					else if (esConstante) {
+						AccionConst1(tokencito.lexema);
+						lexConst = tokencito.lexema;
+					}
+				}
+				if (token_id >= 1006 && token_id <= 1011) { // Si es un tipo de dato desde int hasta void
+
+					AccionId2(tokencito.lexema);
+					esDeclaracion = false;
+				}
+				TokenTem = tokencito.lexema;
+				PilaSintactico.pop();
+				tokensA.push_back(tokencito); // Agregar el token a la lista de tokens aceptados
+				if (cont_cadena + 1 == codespace->Length) {
+					TerminaTexto = true;
+				}
+				tokencito = GetNextToken(codespace); // Avanzar al siguiente token
+				relacionaTokenMatrizPre(tokencito.edo, palabraTemp);
+			}
+			else {
+				// Error de sintaxis, token inesperado
+				ErroresSin(tokencito.edo); // Fin de archivo inesperado
+				errorcito.edo = tokencito.edo;
+				System::String^ managed_string = gcnew System::String(ERRSIN.c_str());
+				errorcito.Mensaje = msclr::interop::marshal_as<string>(managed_string);
+				errorG.push_back(errorcito);
+				break;
+				//return;
+			}
+		}
 		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2009) {
 			int numP = PilaSintactico.top();
 			PilaSintactico.pop();
 
-			/*if (numP == 2000) {
-				if (!lexema_id.empty()) {
-					accionesSemanticas(numP, lexema_id);
-					lexema_id = "";
-				}	
+			if (esConstante && numP == 2001) {
+				if (token_id >= 1012 && token_id <= 1016) { // Valor de las constantes
+					if (token_id == 1012) {
+						//tokencito.lexema = "int";
+						AccionId2("int");
+						accionesSemanticas(numP, lexConst);
+						esConstante = false;
+						continue;
+					}
+					else if (token_id == 1013 || token_id == 1014) { // real o 'notacion'
+						//tokencito.lexema = "float";
+						AccionId2("float");
+						accionesSemanticas(numP, lexConst);
+						esConstante = false;
+						continue;
+					}
+					else if (token_id == 1015) {
+						//tokencito.lexema = "char";
+						AccionId2("char");
+						accionesSemanticas(numP, lexConst);
+						esConstante = false;
+						continue;
+					}
+					else if (token_id == 1016) {
+						//tokencito.lexema = "string";
+						AccionId2("string");
+						accionesSemanticas(numP, lexConst);
+						esConstante = false;
+						continue;
+					}
+
+				}
 			}
-			else */
 			accionesSemanticas(numP, TokenTem);
-			
-		}
-		else if (PilaSintactico.top() >= 1000 && PilaSintactico.top() <= 1059) {
 
-				if (PilaSintactico.top() == colPre) {
-
-					int token_id = PilaSintactico.top();
-					if (token_id == 1001 ) // si es la palabra def  || token_id == 1002
-						esDeclaracion = true;
-					if (token_id == 1005) { // Si es un identificador
-						if(esDeclaracion)
-							//lexema_id = tokencito.lexema;
-							AccionId1(tokencito.lexema);
-					}
-					else
-					if ((token_id >= 1006 && token_id <= 1011)) { // Si es un tipo de dato desde int hasta void
-						
-						AccionId2(tokencito.lexema);
-						esDeclaracion = false;
-					}
-
-					/*if (token_id >= 1012 && token_id <= 1016) {
-						if (token_id == 1012) {
-							tokencito.lexema = "int";
-							AccionId2(tokencito.lexema);
-							esDeclaracion = false;
-						}
-						else if (token_id == 1013) {
-							tokencito.lexema = "float";
-							AccionId2(tokencito.lexema);
-							esDeclaracion = false;
-						}
-						else if (token_id == 1014) {
-							tokencito.lexema = "float";
-							AccionId2(tokencito.lexema);
-							esDeclaracion = false;
-						}
-						else if (token_id == 1015) {
-							tokencito.lexema = "char";
-							AccionId2(tokencito.lexema);
-							esDeclaracion = false;
-						}
-						else if (token_id == 1016) {
-							tokencito.lexema = "string";
-							AccionId2(tokencito.lexema);
-							esDeclaracion = false;
-						}
-					
-					} */
-
-					TokenTem = tokencito.lexema;
-					PilaSintactico.pop();
-					tokensA.push_back(tokencito); // Agregar el token a la lista de tokens aceptados
-					if (cont_cadena+1 == codespace->Length) {
-						TerminaTexto = true;
-					}
-					tokencito = GetNextToken(codespace); // Avanzar al siguiente token
-					relacionaTokenMatrizPre(tokencito.edo, palabraTemp);
-				}
-				else {
-					// Error de sintaxis, token inesperado
-					ErroresSin(tokencito.edo); // Fin de archivo inesperado
-					errorcito.edo = tokencito.edo;
-					System::String^ managed_string = gcnew System::String(ERRSIN.c_str());
-					errorcito.Mensaje = msclr::interop::marshal_as<string>(managed_string);
-					errorG.push_back(errorcito);
-					break;
-					//return;
-				}
 		}
 	}
 	if (PilaSintactico.top() == 1059) {
@@ -1391,7 +1400,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	}
 	if (errorG.empty()) {
 		form->SintaxisSpace->SelectionColor = System::Drawing::Color::Green;
-		form->SintaxisSpace->AppendText("Análisis sintáctico completado correctamento.\n");
+		form->SintaxisSpace->AppendText("Análisis sintáctico correcto.\n");
 	}
 	else {
 		form->SintaxisSpace->SelectionColor = System::Drawing::Color::Red;
@@ -1400,18 +1409,15 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	for (MostrarError error : errorG) {
 		System::String^ codeError = gcnew System::String(errorcito.edo.ToString());
 		System::String^ message = gcnew System::String(errorcito.Mensaje.c_str());
-		form->ErrorsSpaces->AppendText("Error: "+ codeError+". "+ message);
+		form->ErrorsSpaces->AppendText("Error: " + codeError + ". " + message);
 	}
 	for (int i = 0; i < ErroresSemanticos.size(); i++) {
 		System::String^ ErrorSemantico = gcnew System::String(ErroresSemanticos[i].c_str());
 		form->ErrorsSpaces->AppendText(ErrorSemantico + "\n");
-	} 
+	}
 }
 
 #pragma endregion
-
-
-
 
 [STAThreadAttribute]
 void main()
