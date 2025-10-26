@@ -1402,10 +1402,10 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 		System::String^ message = gcnew System::String(errorcito.Mensaje.c_str());
 		form->ErrorsSpaces->AppendText("Error: "+ codeError+". "+ message);
 	}
-	/*for (int i = 0; i <= ErroresSemanticos.size(); i++) {
+	for (int i = 0; i < ErroresSemanticos.size(); i++) {
 		System::String^ ErrorSemantico = gcnew System::String(ErroresSemanticos[i].c_str());
-		form->ErrorsSpaces->AppendText(ErrorSemantico);
-	} */
+		form->ErrorsSpaces->AppendText(ErrorSemantico + "\n");
+	} 
 }
 
 #pragma endregion
