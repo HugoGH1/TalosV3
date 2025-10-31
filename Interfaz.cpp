@@ -216,7 +216,7 @@ std::vector <std::vector <int>> producciones = {
 	{1034}, // OPREL
 	{1035}, // OPREL
 	{50, 2001,1005},//FACT
-	{2002,14}, // FACT
+	{14}, // FACT
 	{2008,1052,36, 2007,1026}, //FACT
 	{1052, 51, 1026}, //LLAMADA-F
 	{ 700 }, // LLAMADA-F
@@ -504,6 +504,23 @@ void VaciarStack() {
 	while (!pilaOperandos.empty()) {
 		pilaOperandos.pop();
 	}
+}
+
+void ImprimirStack(std::stack<std::string> pila) {
+	std::cout << "Pila (Top -> Bottom): [";
+	while (!pila.empty()) {
+		// Imprime el elemento superior
+		std::cout << pila.top();
+
+		// Quita el elemento superior
+		pila.pop();
+
+		// Si la pila aún no está vacía, añade una coma y espacio.
+		if (!pila.empty()) {
+			std::cout << ", ";
+		}
+	}
+	std::cout << "]\n";
 }
 
 #pragma endregion
@@ -845,6 +862,8 @@ void accionesSemanticas(int produccion, std::string lex) {
 			const Simbolos& simbolo = tablaSimbolos.at(lex); // Va a traer toda la informacion que se encuentre en la tabla de simbolos con ese lexema
 			pilaTipos.push(simbolo.Tipo);
 			pilaOperandos.push(lex);
+			ImprimirStack(pilaTipos);
+			//ImprimirStack(pilaOperandos);
 		}
 		else { // El identificador no existe en la tabla de simbolos
 			errorAccion = false;
@@ -856,49 +875,55 @@ void accionesSemanticas(int produccion, std::string lex) {
 			ERRSEM = "Error Semantico: Variable " + lex + " no definida"; // Error semantico por variable no definida
 			pilaTipos.push("float");
 			pilaOperandos.push(lex);
+			ImprimirStack(pilaTipos);
+			///ImprimirStack(pilaOperandos);
 
 			ErroresSemanticos.push_back(ERRSEM);
 		}
 		break;
 	case 2002: // PUSH pila_opreadores (pos_actual) pos_actual +1
 		pilaOpr.push(lex);
+		ImprimirStack(pilaOpr);
 		break;
 	case 2003: // Mientras exista en el tope *, /...
 		if (!pilaOpr.empty()) {
 			std::string opr = pilaOpr.top();
 			if (opr == "*" || opr == "/" || opr == "%") {
 				pilaOpr.pop();
+				ImprimirStack(pilaOpr);
 				// Me falta agregar el operador de potencia
 				if (pilaTipos.empty()) return;
 				std::string tipo2 = pilaTipos.top();
-				pilaTipos.pop();
+				pilaTipos.pop(); ImprimirStack(pilaTipos);
 
 				if (pilaTipos.empty()) return;
 				std::string tipo1 = pilaTipos.top();
-				pilaTipos.pop();
+				pilaTipos.pop(); ImprimirStack(pilaTipos);
 
 				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop();
+				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
 				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop();
+				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
 
 				std::cout << "Operacion: " << tipo1 << " " << opr << " " << tipo2 << std::endl;
 				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
 				if (esPermitido) {
 					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
-					pilaTipos.push(resultadoTipo);
+					pilaTipos.push(resultadoTipo); //ImprimirStack(pilaTipos);
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
-					pilaOperandos.push(R);
+					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
 				}
 				else {
 					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
+					//ImprimirStack(pilaTipos);
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
-					pilaOperandos.push(R);
+					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
 					ERRSEM = "Error semantico: Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
 					ErroresSemanticos.push_back(ERRSEM);
 				}
+				ImprimirStack(pilaTipos);
 			}
 		}
 		else
@@ -908,37 +933,44 @@ void accionesSemanticas(int produccion, std::string lex) {
 		if (!pilaOpr.empty()) {
 			std::string opr = pilaOpr.top();
 			if (opr == "+" || opr == "-" || opr == "||") {
-				pilaOpr.pop();
+				pilaOpr.pop(); ImprimirStack(pilaOpr);
+
 				if (pilaTipos.empty()) return;
 				std::string tipo2 = pilaTipos.top();
-				pilaTipos.pop();
+				pilaTipos.pop(); ImprimirStack(pilaTipos);
+
 				if (pilaTipos.empty()) return;
 				std::string tipo1 = pilaTipos.top();
-				pilaTipos.pop();
+				pilaTipos.pop(); ImprimirStack(pilaTipos);
+
 				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop();
+				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
+
 				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop();
+				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
+				
 				std::cout << "Operacion: " << tipo1 << opr << " " << tipo2 << std::endl;
 				bool prueba = compTipos(tipo1, tipo2);
 				std::cout << "PRUEBA: " << prueba << std::endl;
 				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
 				if (esPermitido) {
 					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
-					pilaTipos.push(resultadoTipo);
+					pilaTipos.push(resultadoTipo); //ImprimirStack(pilaTipos);
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
-					pilaOperandos.push(R);
+					pilaOperandos.push(R); ///ImprimirStack(pilaOperandos);
 				}
 				else {
 					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
+					//ImprimirStack(pilaTipos);
 					R = "R" + std::to_string(cont_resultado);
 					cont_resultado++;
-					pilaOperandos.push(R);
+					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
 					ERRSEM = "Error semantico : Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
 					std::cout << ERRSEM << std::endl;
 					ErroresSemanticos.push_back(ERRSEM);
 				}
+				ImprimirStack(pilaTipos);
 			}
 			else {
 				//std::cout << "Operador en tope no es +, -, ||" << std::endl;
@@ -948,33 +980,36 @@ void accionesSemanticas(int produccion, std::string lex) {
 			std::cout << "Pila de operadores vacia" << std::endl;
 		break;
 	case 2005: // Lo que sigue en la entrada es *,/,%, AND ...
-		pilaOpr.push(lex);
+		pilaOpr.push(lex); ImprimirStack(pilaOpr);
 		break;
 	case 2006: // Lo que sigue en la entrada es +,-, OR ...
-		pilaOpr.push(lex);
+		pilaOpr.push(lex); ImprimirStack(pilaOpr);
 		break;
 	case 2007: // Insertar Marca de fondo falso
-		pilaOpr.push("MFF");
+		pilaOpr.push("MFF"); ImprimirStack(pilaOpr);
 		break;
 	case 2008: // Eliminar Marca de fondo falso
-		pilaOpr.pop();
+		pilaOpr.pop(); ImprimirStack(pilaOpr);
 		break;
 	case 2009: // Si existe un := en el tope de la pila
 		if (pilaTipos.empty()) return;
 		std::string tipo2 = pilaTipos.top();
-		pilaTipos.pop();
+		pilaTipos.pop(); ImprimirStack(pilaTipos);
 		if (pilaTipos.empty()) return;
 		std::string tipo1 = pilaTipos.top();
-		pilaTipos.pop();
+		pilaTipos.pop(); ImprimirStack(pilaTipos);
 		if (tipo2 == tipo1) {
-			pilaOpr.pop(); // Sacamos el :=
+			pilaOpr.pop(); // Sacamos el := 
+			ImprimirStack(pilaOpr);
 		}
 		else {
 			ERRSEM = "Error semantico entre tipos: tipo '" + tipo1 + "' no es igual a '" + tipo2 + "'";
 			std::cout << ERRSEM << std::endl;
 			ErroresSemanticos.push_back(ERRSEM);
 			pilaOpr.pop(); // Sacamos el :=
+			ImprimirStack(pilaOpr);
 		}
+		ImprimirStack(pilaTipos);
 		break;
 	}
 }
