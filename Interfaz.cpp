@@ -1,4 +1,4 @@
-
+﻿
 #include "Interfaz.h"
 #include "TokenType.h"
 #include "MostrarError.h"
@@ -18,6 +18,7 @@ std::string cadenaA, linea, TOKEN = "", lexema_id = "";
 std::string TokenTem;
 std::string ERR = "", formaPalabraR = "",Palabra = "",ERRSIN = "", palabraTemp = "", ERRSEM = "";
 int edo, col,colPre = -1, ap_ini,edoAnterior, longitud;
+int estadoLexicoActual = -1; 
 char c, analizado;
 int cont_cadena = 0, index = 0, cont_direcc = 100, cont_resultado = 1;
 bool culmina = false, esReservada = false, accionSemantica = false, esDeclaracion = false;
@@ -178,14 +179,18 @@ std::vector <std::vector <int>> producciones = {
 	{2009,36,2002,1051}, //ID2 '= EXPR'
 	{1020}, // ID2
 	{1021}, // ID2
-	{1056, 1052, 36, 1026, 1049, 18, 1024}, //EST-DO
-	{1044, 33, 32, 18, 1052, 36, 1026, 1022}, //EST-IF
-	{32, 18, 1052, 36, 1026, 1042}, //PROD-ELSEIF
+	{1056, 2024, 1052, 2008, 2014, 36, 2007, 1026, 1049, 18, 2023, 1024},
+	//{1056, 2024, 1052, 2008, 36, 2014, 1026, 2007, 1049, 18, 2023, 1024}, //EST-DO
+	//{1056, 1052, 36, 1026, 1049, 18, 1024}, //EST-DO
+	{2012, 1044, 33, 32, 18, 1052, 2008, 2010, 2014, 36, 2007, 1026, 1022}, //EST-IF
+	{32, 2011, 18, 1052, 2008, 2010, 2014, 36, 2007, 1026, 1042},//PROD-ELSEIF
 	{700}, // PROD-ELSEIF
-	{18, 1043}, //PROD-ELSE
+	{18, 2011, 1043}, //PROD-ELSE
 	{700}, // PROD-ELSE
-	{1045, 18, 1052, 36, 1026, 1023}, //EST-WHILE
-	{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025}, //EST-FOR
+	//{1045, 2022, 18, 1052, 2021, 2014, 36, 2007, 1026, 2020, 1023},
+	{1045, 2022, 18, 1052, 2008, 2021, 2014, 36, 2007, 1026, 2020, 1023},//EST-WHILE
+	{1046, 2019, 18, 1052, 2018, 2017, 36, 1055, 2016, 36, 1026, 2001, 1005, 1025},
+	//{1046, 18, 1052, 36, 1055, 36, 1026, 1005, 1025}, //EST-FOR
 	{37, 2004,38}, //EXPR
 	{36, 2006,1028}, //PROD2
 	{2004,700}, // PROD2
@@ -193,7 +198,7 @@ std::vector <std::vector <int>> producciones = {
 	{36, 2005,1029}, //PROD3
 	{2003,700}, // PROD3
 	{41}, //EXPR3
-	{41, 1027}, //EXPR3
+	{41, 1027, 2014}, //EXPR3
 	{42, 43}, //EXPR4
 	{43, 48}, //PROD4
 	{700}, // PROD4
@@ -209,12 +214,12 @@ std::vector <std::vector <int>> producciones = {
 	{46, 2005,1040}, // PROD6
 	{46, 2005,1041}, // PROD6
 	{2003,700}, // PROD6
-	{1030}, //OPREL
-	{1031}, // OPREL
-	{1032}, // OPREL
-	{1033}, // OPREL
-	{1034}, // OPREL
-	{1035}, // OPREL
+	{2015, 1030}, //OPREL
+	{2015, 1031}, // OPREL
+	{2015, 1032}, // OPREL
+	{2015, 1033}, // OPREL
+	{2015, 1034}, // OPREL
+	{2015, 1035}, // OPREL
 	{50, 2001,1005},//FACT
 	{14}, // FACT
 	{2008,1052,36, 2007,1026}, //FACT
@@ -234,6 +239,83 @@ std::string PalabrasReservadas[31] = {"include","lib","endlib","class","endclass
 int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,107};
 
 #pragma endregion
+
+#pragma region Estructuras para Cuádruplos
+
+struct Cuadruplo {
+	std::string operador;
+	std::string op1;
+	std::string op2;
+	std::string resultado;
+	int direccion;
+};
+
+std::vector<Cuadruplo> listaCuadruplos;
+std::stack<int> pilaSaltos;
+int contadorCuadruplos = 0;
+std::string varFor_actual = "";
+
+void GenerarCuadruplo(std::string oper, std::string operando1, std::string operando2, std::string res) {
+	Cuadruplo cuad;
+	cuad.operador = oper;
+	cuad.op1 = operando1;
+	cuad.op2 = operando2;
+	cuad.resultado = res;
+	cuad.direccion = contadorCuadruplos;
+
+	listaCuadruplos.push_back(cuad);
+	contadorCuadruplos++;
+
+	std::cout << "Cuadruplo [" << cuad.direccion << "]: ("
+		<< cuad.operador << ", "
+		<< cuad.op1 << ", "
+		<< cuad.op2 << ", "
+		<< cuad.resultado << ")" << std::endl;
+}
+
+void RellenarCuadruplo(int direccion, int valorSalto) {
+	if (direccion >= 0 && direccion < listaCuadruplos.size()) {
+		listaCuadruplos[direccion].resultado = std::to_string(valorSalto);
+		std::cout << "Rellenando cuadruplo [" << direccion << "] con salto a: " << valorSalto << std::endl;
+	}
+}
+
+void MostrarCuadruplos(TalosV3::Interfaz^ form) {
+	//form->CuadruplosSpace->Clear(); // Asume que tienes un TextBox llamado CuadruplosSpace
+
+	//for (const auto& cuad : listaCuadruplos) {
+	//	System::String^ linea = "[" + cuad.direccion + "] (" +
+	//		gcnew System::String(cuad.operador.c_str()) + ", " +
+	//		gcnew System::String(cuad.op1.c_str()) + ", " +
+	//		gcnew System::String(cuad.op2.c_str()) + ", " +
+	//		gcnew System::String(cuad.resultado.c_str()) + ")\n";
+
+	//form->CuadruplosSpace->AppendText(linea);
+	 
+	std::cout << "\n========================================" << std::endl;
+	std::cout << "       CUÁDRUPLOS GENERADOS" << std::endl;
+	std::cout << "========================================" << std::endl;
+
+	if (listaCuadruplos.empty()) {
+		std::cout << "No se generaron cuádruplos." << std::endl;
+	}
+	else {
+		for (const auto& cuad : listaCuadruplos) {
+			std::cout << "[" << cuad.direccion << "] ("
+				<< cuad.operador << ", "
+				<< cuad.op1 << ", "
+				<< cuad.op2 << ", "
+				<< cuad.resultado << ")" << std::endl;
+		}
+	}
+
+	std::cout << "========================================\n" << std::endl;
+
+//	}
+}
+
+#pragma endregion
+
 
 #pragma region Funciones
 
@@ -298,12 +380,12 @@ void Token(int e) {
 	case 101: TOKEN = "Identificador \n"; break;
 	case 102: TOKEN = "Constante Entera \n"; break;
 	case 103: TOKEN = "Constante Real \n"; break;
-	case 104: TOKEN = "Constante Notaci�n Cient�fica\n"; break;
+	case 104: TOKEN = "Constante Notación Científica\n"; break;
 	case 105: TOKEN = "Suma\n"; break;
 	case 106: TOKEN = "Resta\n"; break;
-	case 107: TOKEN = "Multiplicaci�n\n"; break;
-	case 108: TOKEN = "Divisi�n\n"; break;
-	case 109: TOKEN = "Asignaci�n\n"; break;
+	case 107: TOKEN = "Multiplicación\n"; break;
+	case 108: TOKEN = "División\n"; break;
+	case 109: TOKEN = "Asignación\n"; break;
 	case 110: TOKEN = "Igual Igual\n"; break;
 	case 111: TOKEN = "Menor\n"; break;
 	case 112: TOKEN = "Menor o Igual\n"; break;
@@ -313,8 +395,8 @@ void Token(int e) {
 	case 116: TOKEN = "NOT\n"; break;
 	case 117: TOKEN = "AND\n"; break;
 	case 118: TOKEN = "OR\n"; break;
-	case 119: TOKEN = "Par�ntesis abre\n"; break;
-	case 120: TOKEN = "Par�ntesis cierra\n"; break;
+	case 119: TOKEN = "Paréntesis abre\n"; break;
+	case 120: TOKEN = "Paréntesis cierra\n"; break;
 	case 121: TOKEN = "Corchete abre\n"; break;
 	case 122: TOKEN = "Corchete cierra\n"; break;
 	case 123: TOKEN = "Punto y coma\n"; break;
@@ -335,16 +417,16 @@ void Token(int e) {
 
 void Error(int e) {
 	switch (e) {
-	case 500: ERR = "Se esperaba un d�gito "; break;
-	case 501: ERR = "Se esperaba un signo o d�gito "; break;
+	case 500: ERR = "Se esperaba un dígito "; break;
+	case 501: ERR = "Se esperaba un signo o dígito "; break;
 	case 502: ERR = "Se esperaba un digito "; break;
 	case 503: ERR = "Error, se esperaba '&' para AND "; break;
 	case 504: ERR = "Error, se esperaba '|' para OR "; break;
-	case 505: ERR = "Cte caracter no v�lida "; break;
+	case 505: ERR = "Cte caracter no válida "; break;
 	case 506: ERR = "Error, no se esperaba el simbolo "; break;
 	case 507: ERR = "Error, se espera un: ' para cte caracter"; break;
 	case 508: ERR = "EoF \n"; break;
-	//case 509: ERR = "El archivo est� vac�o \n"; break;
+	//case 509: ERR = "El archivo está vacío \n"; break;
 	}
 }
 
@@ -506,16 +588,13 @@ void VaciarStack() {
 	}
 }
 
+#pragma region Funciones de Impresión de Pilas
+
 void ImprimirStack(std::stack<std::string> pila) {
 	std::cout << "Pila (Top -> Bottom): [";
 	while (!pila.empty()) {
-		// Imprime el elemento superior
 		std::cout << pila.top();
-
-		// Quita el elemento superior
 		pila.pop();
-
-		// Si la pila a�n no est� vac�a, a�ade una coma y espacio.
 		if (!pila.empty()) {
 			std::cout << ", ";
 		}
@@ -523,9 +602,66 @@ void ImprimirStack(std::stack<std::string> pila) {
 	std::cout << "]\n";
 }
 
+void ImprimirPilaSaltos(std::stack<int> pila) {
+	std::cout << "Pila Saltos (Top -> Bottom): [";
+	while (!pila.empty()) {
+		std::cout << pila.top();
+		pila.pop();
+		if (!pila.empty()) {
+			std::cout << ", ";
+		}
+	}
+	std::cout << "]\n";
+}
+
+void ImprimirEstadoPilas() {
+	std::cout << "\n========== ESTADO DE PILAS ==========" << std::endl;
+
+	// Imprimir Pila de Operandos
+	std::cout << "PILA OPERANDOS: ";
+	if (pilaOperandos.empty()) {
+		std::cout << "[VACIA]" << std::endl;
+	}
+	else {
+		ImprimirStack(pilaOperandos);
+	}
+
+	// Imprimir Pila de Operadores
+	std::cout << "PILA OPERADORES: ";
+	if (pilaOpr.empty()) {
+		std::cout << "[VACIA]" << std::endl;
+	}
+	else {
+		ImprimirStack(pilaOpr);
+	}
+
+	// Imprimir Pila de Tipos
+	//std::cout << "PILA TIPOS: ";
+	//if (pilaTipos.empty()) {
+	//	std::cout << "[VACÍA]" << std::endl;
+	//}
+	//else {
+	//	ImprimirStack(pilaTipos);
+	//}
+
+	// Imprimir Pila de Saltos
+	std::cout << "PILA SALTOS: ";
+	if (pilaSaltos.empty()) {
+		std::cout << "[VACIA]" << std::endl;
+	}
+	else {
+		ImprimirPilaSaltos(pilaSaltos);
+	}
+
+	std::cout << "====================================\n" << std::endl;
+}
+
 #pragma endregion
 
-#pragma region L�xico
+
+#pragma endregion
+
+#pragma region Léxico
 void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 {
 	System::String^ codespace = form->CodeSpace->Text;
@@ -566,14 +702,14 @@ void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 					cont_cadena--;
 					longitud = index - ap_ini;
 					System::String^ lexema = codespace->Substring(ap_ini, longitud);
-					break; // Cuando ya encontr� el estado de la palbra reservada, lo saco para ya no repetir el ciclo
+					break; // Cuando ya encontró el estado de la palbra reservada, lo saco para ya no repetir el ciclo
 				}
 			}
 			if (edo == 100 || edo == 101) {
 				esReservada = false;
 				for (int i = 0; i < std::size(PalabrasReservadas); i++) {
 					if (Palabra == PalabrasReservadas[i]) {
-						Token(100); // Es para cuando se compara la cadena con una palabra reservada v�lida
+						Token(100); // Es para cuando se compara la cadena con una palabra reservada válida
 						longitud = index - ap_ini;
 						System::String^ lexema = codespace->Substring(ap_ini, longitud)->Trim();
 						System::String^ lexemaFormato = ("'" + lexema + "'")->PadRight(20);
@@ -594,7 +730,7 @@ void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 				}
 
 			}else {
-				Token(edo); // estado de aceptaci�n, entera, flotante
+				Token(edo); // estado de aceptación, entera, flotante
 				longitud = index - ap_ini;
 				System::String^ lexema = codespace->Substring(ap_ini, longitud)->Trim();
 				System::String^ lexemaFormato = ("'" + lexema + "'")->PadRight(20);
@@ -606,8 +742,8 @@ void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 			longitud = index - ap_ini;
 			System::String^ lexema = codespace->Substring(ap_ini, longitud)->Trim();
 			if (codespace->Length <= 1) {
-				//Error(509); // Se encontr� un error
-				form->ErrorsSpaces->AppendText(gcnew System::String("El archivo est� vac�o" + "\n"));
+				//Error(509); // Se encontró un error
+				form->ErrorsSpaces->AppendText(gcnew System::String("El archivo está vacío" + "\n"));
 			}
 			else if (edo == 508) {
 				if (edoAnterior == 23 || edoAnterior == 24) {
@@ -625,13 +761,13 @@ void TalosV3::Interfaz::Analiza(TalosV3::Interfaz^ form)
 			}
 			else {
 				if (edo == 506) {
-					Error(edo); // Se encontr� un error
+					Error(edo); // Se encontró un error
 					System::String^ lexemaFormato = (" cerca de: " + lexema + "")->PadRight(20);
 					form->ErrorsSpaces->AppendText(gcnew System::String(ERR.c_str()) + lexemaFormato + "\n");
 					//break;
 				}
 				else {
-					Error(edo); // Se encontr� un error
+					Error(edo); // Se encontró un error
 					System::String^ lexemaFormato = (" cerca de: " + lexema + "")->PadRight(20);
 					form->ErrorsSpaces->AppendText(gcnew System::String(ERR.c_str()) + lexemaFormato + "\n");
 					Palabra = "";
@@ -686,14 +822,14 @@ static Tokenizador GetNextToken(System::String^ codespace)
 					cont_cadena--;
 					//longitud = index - ap_ini;
 					//System::String^ lexema = codespace->Substring(ap_ini, longitud);
-					break; // Cuando ya encontr� el estado de la palbra reservada, lo saco para ya no repetir el ciclo
+					break; // Cuando ya encontró el estado de la palbra reservada, lo saco para ya no repetir el ciclo
 				}
 			}
 			if (edo == 100 || edo == 101) {
 				esReservada = false;
 				for (int i = 0; i < std::size(PalabrasReservadas); i++) {
 					if (Palabra == PalabrasReservadas[i]) {
-						Token(100); // Es para cuando se compara la cadena con una palabra reservada v�lida
+						Token(100); // Es para cuando se compara la cadena con una palabra reservada válida
 						//longitud = index - ap_ini;
 						esReservada = true;
 						
@@ -731,7 +867,7 @@ static Tokenizador GetNextToken(System::String^ codespace)
 
 			}
 			else {
-				Token(edo); // estado de aceptaci�n, entera, flotante				
+				Token(edo); // estado de aceptación, entera, flotante				
 				token.edo = edo;
 				Token(edo);
 				System::String^ lex = "";
@@ -752,10 +888,10 @@ static Tokenizador GetNextToken(System::String^ codespace)
 			lex = lex->Trim();
 			
 			if (codespace->Length <= 1) {
-				//Error(509); // Se encontr� un error
+				//Error(509); // Se encontró un error
 				token.edo = edo;
 				token.lexema = msclr::interop::marshal_as<string>(lex);
-				token.gramema = "El archivo est� vac�o";
+				token.gramema = "El archivo está vacío";
 				return token;
 			}
 			else if (edo == 508) {
@@ -810,9 +946,9 @@ static Tokenizador GetNextToken(System::String^ codespace)
 
 #pragma endregion
 
-#pragma region Sem�ntico
+#pragma region Semántico
 void AccionId1(const std::string& lexema) {
-	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de s�mbolos
+	if (tablaSimbolos.count(lexema)) { // El identificador ya existe en la tabla de símbolos
 		ERRSEM = "Error Semantico: Duplicidad de variable: '" + lexema + "' ya definida.";
 		std::cout << "Error Semantico: " << ERRSEM << std::endl;
 		ErroresSemanticos.push_back(ERRSEM);
@@ -835,7 +971,7 @@ void AccionId2(const std::string& tipo) {
 }
 
 void AccionConst1(const std::string& lexema) {
-	if (tablaSimbolos.count(lexema)) { // La constante ya existe en la tabla de s�mbolos
+	if (tablaSimbolos.count(lexema)) { // La constante ya existe en la tabla de símbolos
 		ERRSEM = "Constante: ' " + lexema + "' ya definida.";
 		std::cout << "Error Semantico: " << ERRSEM << std::endl;
 		ErroresSemanticos.push_back(ERRSEM);
@@ -846,182 +982,655 @@ void AccionConst1(const std::string& lexema) {
 
 #pragma endregion
 
-#pragma region Acciones Sem�nticas
+#pragma region Acciones Semánticas
 
 void accionesSemanticas(int produccion, std::string lex) {
-	int numAccion = 0;
-	std::string R = "";
-	bool errorAccion = true;
+	std::cout << "\n>>> ACCIÓN " << produccion << " <<<" << std::endl;
+
 	switch (produccion) {
-		//case 2000:
-			//AccionId1(lex); // Guarda el lexema en la pila de lexemas
-			//break;
-	case 2001: //PUSH pila_tipos (pos_actual) el tipo de la variable.  // pos_actual + 1
 
-		if (tablaSimbolos.count(lex)) { // Verifica si el lexema existe en la tabla de simbolos
-			const Simbolos& simbolo = tablaSimbolos.at(lex); // Va a traer toda la informacion que se encuentre en la tabla de simbolos con ese lexema
-			pilaTipos.push(simbolo.Tipo);
-			pilaOperandos.push(lex);
-			ImprimirStack(pilaTipos);
-			//ImprimirStack(pilaOperandos);
-		}
-		else { // El identificador no existe en la tabla de simbolos
-			errorAccion = false;
-		}
-		//cont_direcc++;
-		if (!errorAccion) {
-			pilaLexemas.push_back(lex);
-			AccionId2("float"); // si no existe lo declara como float por default
-			ERRSEM = "Error Semantico: Variable " + lex + " no definida"; // Error semantico por variable no definida
-			pilaTipos.push("float");
-			pilaOperandos.push(lex);
-			ImprimirStack(pilaTipos);
-			///ImprimirStack(pilaOperandos);
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2001: PUSH operando a pila_operandos
+	// Usada en: FACT → id | cte_int | cte_real | cte_char | cte_string
+	// Propósito: Insertar variables y constantes en la pila de operandos
+	// ═════════════════════════════════════════════════════════════════
+	case 2001: {
+		std::cout << "→ PUSH operando: " << lex << std::endl;
 
-			ErroresSemanticos.push_back(ERRSEM);
-		}
-		break;
-	case 2002: // PUSH pila_opreadores (pos_actual) pos_actual +1
-		pilaOpr.push(lex);
-		ImprimirStack(pilaOpr);
-		break;
-	case 2003: // Mientras exista en el tope *, /...
-		if (!pilaOpr.empty()) {
-			std::string opr = pilaOpr.top();
-			if (opr == "*" || opr == "/" || opr == "%") {
-				pilaOpr.pop();
-				ImprimirStack(pilaOpr);
-				// Me falta agregar el operador de potencia
-				if (pilaTipos.empty()) return;
-				std::string tipo2 = pilaTipos.top();
-				pilaTipos.pop(); ImprimirStack(pilaTipos);
-
-				if (pilaTipos.empty()) return;
-				std::string tipo1 = pilaTipos.top();
-				pilaTipos.pop(); ImprimirStack(pilaTipos);
-
-				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
-				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
-
-				std::cout << "Operacion: " << tipo1 << " " << opr << " " << tipo2 << std::endl;
-				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
-				if (esPermitido) {
-					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
-					pilaTipos.push(resultadoTipo); //ImprimirStack(pilaTipos);
-					R = "R" + std::to_string(cont_resultado);
-					cont_resultado++;
-					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
-				}
-				else {
-					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
-					//ImprimirStack(pilaTipos);
-					R = "R" + std::to_string(cont_resultado);
-					cont_resultado++;
-					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
-					ERRSEM = "Error semantico: Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
-					ErroresSemanticos.push_back(ERRSEM);
-				}
-				ImprimirStack(pilaTipos);
-			}
-		}
-		else
-			//std::cout << "Pila de operadores vacia" << std::endl;
-			break;
-	case 2004: // Mientras exista en el tope +, -...
-		if (!pilaOpr.empty()) {
-			std::string opr = pilaOpr.top();
-			if (opr == "+" || opr == "-" || opr == "||") {
-				pilaOpr.pop(); ImprimirStack(pilaOpr);
-
-				if (pilaTipos.empty()) return;
-				std::string tipo2 = pilaTipos.top();
-				pilaTipos.pop(); ImprimirStack(pilaTipos);
-
-				if (pilaTipos.empty()) return;
-				std::string tipo1 = pilaTipos.top();
-				pilaTipos.pop(); ImprimirStack(pilaTipos);
-
-				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
-
-				if (pilaOperandos.empty()) return;
-				pilaOperandos.pop(); //ImprimirStack(pilaOperandos);
-				
-				std::cout << "Operacion: " << tipo1 << opr << " " << tipo2 << std::endl;
-				bool prueba = compTipos(tipo1, tipo2);
-				std::cout << "PRUEBA: " << prueba << std::endl;
-				bool esPermitido = esTipoPermitido(compTipos(tipo1, tipo2));
-				if (esPermitido) {
-					std::string resultadoTipo = TipoResultante(compTipos(tipo1, tipo2), opr);
-					pilaTipos.push(resultadoTipo); //ImprimirStack(pilaTipos);
-					R = "R" + std::to_string(cont_resultado);
-					cont_resultado++;
-					pilaOperandos.push(R); ///ImprimirStack(pilaOperandos);
-				}
-				else {
-					pilaTipos.push("float"); // Por default seguimos con float para no detener la compilacion
-					//ImprimirStack(pilaTipos);
-					R = "R" + std::to_string(cont_resultado);
-					cont_resultado++;
-					pilaOperandos.push(R); //ImprimirStack(pilaOperandos);
-					ERRSEM = "Error semantico : Operacion entre tipos no permitida '" + tipo1 + " " + opr + " " + tipo2+"'";
-					std::cout << ERRSEM << std::endl;
-					ErroresSemanticos.push_back(ERRSEM);
-				}
-				ImprimirStack(pilaTipos);
+		// Determinar tipo según estado léxico y agregar a pilas
+		if (estadoLexicoActual == 101) {
+			// Identificador - verificar en tabla de símbolos
+			if (tablaSimbolos.count(lex)) {
+				const Simbolos& simbolo = tablaSimbolos.at(lex);
+				pilaTipos.push(simbolo.Tipo);
+				pilaOperandos.push(lex);
+				std::cout << "  Variable: " << lex << " (" << simbolo.Tipo << ")" << std::endl;
 			}
 			else {
-				//std::cout << "Operador en tope no es +, -, ||" << std::endl;
+				// Variable no declarada - error semántico
+				pilaLexemas.push_back(lex);
+				AccionId2("float");
+				ERRSEM = "Error Semantico: Variable '" + lex + "' no definida";
+				pilaTipos.push("float");
+				pilaOperandos.push(lex);
+				ErroresSemanticos.push_back(ERRSEM);
+				std::cout << "  " << ERRSEM << std::endl;
 			}
 		}
-		else
-			std::cout << "Pila de operadores vacia" << std::endl;
-		break;
-	case 2005: // Lo que sigue en la entrada es *,/,%, AND ...
-		pilaOpr.push(lex); ImprimirStack(pilaOpr);
-		break;
-	case 2006: // Lo que sigue en la entrada es +,-, OR ...
-		pilaOpr.push(lex); ImprimirStack(pilaOpr);
-		break;
-	case 2007: // Insertar Marca de fondo falso
-		pilaOpr.push("MFF"); ImprimirStack(pilaOpr);
-		break;
-	case 2008: // Eliminar Marca de fondo falso
-		pilaOpr.pop(); ImprimirStack(pilaOpr);
-		break;
-	case 2009: // Si existe un := en el tope de la pila
-		if (pilaTipos.empty()) return;
-		std::string tipo2 = pilaTipos.top();
-		pilaTipos.pop(); ImprimirStack(pilaTipos);
-		if (pilaTipos.empty()) return;
-		std::string tipo1 = pilaTipos.top();
-		pilaTipos.pop(); ImprimirStack(pilaTipos);
-		if (tipo2 == tipo1) {
-			pilaOpr.pop(); // Sacamos el := 
-			ImprimirStack(pilaOpr);
+		else if (estadoLexicoActual == 102) {
+			// Constante entera
+			pilaTipos.push("int");
+			pilaOperandos.push(lex);
+			std::cout << "  Cte entera: " << lex << std::endl;
+		}
+		else if (estadoLexicoActual == 103 || estadoLexicoActual == 104) {
+			// Constante real o notación científica
+			pilaTipos.push("float");
+			pilaOperandos.push(lex);
+			std::cout << "  Cte real: " << lex << std::endl;
+		}
+		else if (estadoLexicoActual == 125) {
+			// Constante caracter
+			pilaTipos.push("char");
+			pilaOperandos.push(lex);
+			std::cout << "  Cte char: " << lex << std::endl;
+		}
+		else if (estadoLexicoActual == 126) {
+			// Constante string
+			pilaTipos.push("string");
+			pilaOperandos.push(lex);
+			std::cout << "  Cte string: " << lex << std::endl;
 		}
 		else {
-			ERRSEM = "Error semantico entre tipos: tipo '" + tipo1 + "' no es igual a '" + tipo2 + "'";
-			std::cout << ERRSEM << std::endl;
-			ErroresSemanticos.push_back(ERRSEM);
-			pilaOpr.pop(); // Sacamos el :=
-			ImprimirStack(pilaOpr);
+			// Token inesperado - asumir float
+			std::cout << "  Token inesperado (estado " << estadoLexicoActual << ")" << std::endl;
+			pilaTipos.push("float");
+			pilaOperandos.push(lex);
 		}
-		ImprimirStack(pilaTipos);
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2002: PUSH operador de asignación '='
+	// Usada en: ID2 → = EXPR
+	// ═════════════════════════════════════════════════════════════════
+	case 2002:
+		std::cout << "→ PUSH operador '='" << std::endl;
+		pilaOpr.push(lex);
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2003: Generar cuádruplos para operadores multiplicativos
+	// Usada en: TERM → TERM (*|/|%|**) FACT
+	// Genera: (oper, op1, op2, R)
+	// Para generar cuadruplo R con * / % **
+	// ═════════════════════════════════════════════════════════════════ 
+	case 2003: {
+		std::cout << "→ Generar cuádruplo: *, /, %, **" << std::endl;
+
+		// Procesar todos los operadores multiplicativos pendientes
+		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
+			std::string oper = pilaOpr.top();
+
+			if (oper == "*" || oper == "/" || oper == "%" || oper == "**") {
+				pilaOpr.pop();
+
+				if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+					std::cout << "  Error: Operandos insuficientes" << std::endl;
+					break;
+				}
+
+				// Extraer operandos (op2 primero, luego op1)
+				std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+				std::string op2 = pilaOperandos.top(); pilaOperandos.pop();
+				std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+				std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+				// Verificar compatibilidad y generar cuádruplo
+				int regla = compTipos(tipo1, tipo2);
+				if (esTipoPermitido(regla)) {
+					std::string resultadoTipo = TipoResultante(regla, oper);
+					pilaTipos.push(resultadoTipo);
+					std::string R = "R" + std::to_string(cont_resultado++);
+					pilaOperandos.push(R);
+					GenerarCuadruplo(oper, op1, op2, R);
+				}
+				else {
+					pilaTipos.push("float");
+					std::string R = "R" + std::to_string(cont_resultado++);
+					pilaOperandos.push(R);
+					ERRSEM = "Error semantico: Operacion '" + oper + "' entre tipos incompatibles";
+					ErroresSemanticos.push_back(ERRSEM);
+					std::cout << "  " << ERRSEM << std::endl;
+					GenerarCuadruplo(oper, op1, op2, R);
+				}
+			}
+			else {
+				break;
+			}
+		}
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2004: Generar cuádruplos para operadores aditivos
+	// Usada en: EXPR2 → EXPR2 (+|-|||) TERM
+	// Genera: (oper, op1, op2, R)
+	// Generamos cuadruplo R de + - ||
+	// ═════════════════════════════════════════════════════════════════
+	case 2004: {
+		std::cout << "→ Generar cuádruplo: +, -, ||" << std::endl;
+
+		// Procesar todos los operadores aditivos pendientes
+		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
+			std::string oper = pilaOpr.top();
+
+			if (oper == "+" || oper == "-" || oper == "||") {
+				pilaOpr.pop();
+
+				if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+					std::cout << "  Error: Operandos insuficientes" << std::endl;
+					break;
+				}
+
+				std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+				std::string op2 = pilaOperandos.top(); pilaOperandos.pop();
+				std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+				std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+				int regla = compTipos(tipo1, tipo2);
+				if (esTipoPermitido(regla)) {
+					std::string resultadoTipo = TipoResultante(regla, oper);
+					pilaTipos.push(resultadoTipo);
+					std::string R = "R" + std::to_string(cont_resultado++);
+					pilaOperandos.push(R);
+					GenerarCuadruplo(oper, op1, op2, R);
+				}
+				else {
+					pilaTipos.push("float");
+					std::string R = "R" + std::to_string(cont_resultado++);
+					pilaOperandos.push(R);
+					ERRSEM = "Error semantico: Operacion '" + oper + "' entre tipos incompatibles";
+					ErroresSemanticos.push_back(ERRSEM);
+					std::cout << "  " << ERRSEM << std::endl;
+					GenerarCuadruplo(oper, op1, op2, R);
+				}
+			}
+			else {
+				break;
+			}
+		}
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2005: PUSH operador multiplicativo
+	// Usada en: PROD6 → *|/|%|**
+	// ═════════════════════════════════════════════════════════════════
+	case 2005:
+		std::cout << "→ PUSH operador: " << lex << std::endl;
+		pilaOpr.push(lex);
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2006: PUSH operador aditivo
+	// Usada en: PROD2/PROD3 → +|-|||
+	// ═════════════════════════════════════════════════════════════════
+	case 2006:
+		std::cout << "→ PUSH operador: " << lex << std::endl;
+		pilaOpr.push(lex);
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2007: Insertar Marca de Fondo Falso (MFF)
+	// Usada en: FACT → ( EXPR ) y condiciones de estructuras
+	// Propósito: Delimitar alcance de operadores
+	// ═════════════════════════════════════════════════════════════════
+	case 2007:
+		std::cout << "→ PUSH MFF" << std::endl;
+		pilaOpr.push("MFF");
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2008: Eliminar Marca de Fondo Falso
+	// Usada en: Cierre de paréntesis y fin de condiciones
+	// ═════════════════════════════════════════════════════════════════
+	case 2008:
+		std::cout << "→ POP MFF" << std::endl;
+		if (!pilaOpr.empty() && pilaOpr.top() == "MFF") {
+			pilaOpr.pop();
+		}
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2009: Generar cuádruplo de asignación
+	// Usada en: ID2 → = EXPR
+	// Genera: (=, variable_destino, , resultado_expresión)
+	// ═════════════════════════════════════════════════════════════════
+	case 2009: {
+		std::cout << "→ Generar asignación" << std::endl;
+
+		if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+			std::cout << "  Error: Operandos insuficientes" << std::endl;
+			break;
+		}
+
+		// Extraer expresión (lado derecho)
+		std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+		std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+		// Extraer variable (lado izquierdo)
+		std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+		std::string op2 = pilaOperandos.top(); pilaOperandos.pop();
+
+		// Verificar compatibilidad de tipos
+		int regla = compTipos(tipo2, tipo1);
+		if (tipo2 == tipo1 || esTipoPermitido(regla)) {
+			if (!pilaOpr.empty()) {
+				pilaOpr.pop(); // Sacar '='
+			}
+			// Orden: (=, destino, , origen)
+			GenerarCuadruplo("=", op2, "", op1);
+		}
+		else {
+			ERRSEM = "Error semantico: Tipo incompatible en asignación";
+			ErroresSemanticos.push_back(ERRSEM);
+			std::cout << "  " << ERRSEM << std::endl;
+			if (!pilaOpr.empty()) {
+				pilaOpr.pop();
+			}
+		}
+		ImprimirEstadoPilas();
+		break;
+	}
+
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2010: GotoF del IF
+	// Usada en: EST-IF → if ( EXPR )
+	// Genera: (GotoF, condicion, , ?) - pendiente
+	// Si condicion es FALSE → Salta al siguiente bloque
+	// ═════════════════════════════════════════════════════════════════
+	case 2010: {
+		std::cout << "→ IF: SF (siguiente bloque si FALSE)" << std::endl;
+
+		if (!pilaOperandos.empty()) {
+			std::string condicion = pilaOperandos.top();
+			pilaOperandos.pop();
+
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+
+			GenerarCuadruplo("SF", condicion, "", "?");
+			pilaSaltos.push(contadorCuadruplos - 1);
+			std::cout << "  SF en: [" << (contadorCuadruplos - 1) << "]" << std::endl;
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2011: Goto del IF (saltar al final)
+	// Usada en: EST-IF → después de bloque if/elseif
+	// Genera: (Goto, , , ?) - pendiente
+	// Rellena: GotoF anterior con dirección actual
+	// ═════════════════════════════════════════════════════════════════
+	case 2011: {
+		std::cout << "→ IF: SI al final" << std::endl;
+
+		// Generar Goto incondicional
+		GenerarCuadruplo("SI", "", "", "?");
+		int dirGoto = contadorCuadruplos - 1;
+
+		// Rellenar GotoF anterior
+		if (!pilaSaltos.empty()) {
+			int dirGotoF = pilaSaltos.top();
+			pilaSaltos.pop();
+			RellenarCuadruplo(dirGotoF, contadorCuadruplos);
+			std::cout << "  Relleno SI[" << dirGotoF << "] -> " << contadorCuadruplos << std::endl;
+		}
+
+		// Guardar nuevo Goto para rellenar al ENDIF
+		pilaSaltos.push(dirGoto);
+		std::cout << "  SI en: [" << dirGoto << "]" << std::endl;
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2012: Rellenar todos los Goto del IF
+	// Usada en: EST-IF → endif
+	// Rellena: Todos los Goto pendientes con dirección actual
+	// ═════════════════════════════════════════════════════════════════
+	case 2012: {
+		std::cout << "→ IF: Rellenar todos los SI (ENDIF)" << std::endl;
+
+		// Rellenar todos los saltos pendientes
+		while (!pilaSaltos.empty()) {
+			int dirSalto = pilaSaltos.top();
+			pilaSaltos.pop();
+			RellenarCuadruplo(dirSalto, contadorCuadruplos);
+			std::cout << "  Relleno [" << dirSalto << "] -> " << contadorCuadruplos << std::endl;
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2014: Generar cuádruplos para operadores relacionales
+	// Usada en: EXPR3 → EXPR3 (<|<=|>|>=|==|!=) EXPR2
+	// Genera: (oper, op1, op2, R) donde R es tipo 'bool'
+	// ═════════════════════════════════════════════════════════════════
+	case 2014: {
+		std::cout << "→ Generar cuádruplo relacional" << std::endl;
+
+		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
+			std::string oper = pilaOpr.top();
+
+			if (oper == ">" || oper == "<" || oper == "==" ||
+				oper == "!=" || oper == ">=" || oper == "<=") {
+				pilaOpr.pop();
+
+				if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+					std::cout << "  Error: Operandos insuficientes" << std::endl;
+					break;
+				}
+
+				std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+				std::string op2 = pilaOperandos.top(); pilaOperandos.pop();
+				std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+				std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+				// Resultado siempre es bool
+				pilaTipos.push("bool");
+				std::string R = "R" + std::to_string(cont_resultado++);
+				pilaOperandos.push(R);
+				GenerarCuadruplo(oper, op1, op2, R);
+			}
+			else {
+				break;
+			}
+		}
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2015: PUSH operador relacional
+	// Usada en: OPREL → ==|!=|<|<=|>|>=
+	// ═════════════════════════════════════════════════════════════════
+	case 2015:
+		std::cout << "→ PUSH operador relacional: " << lex << std::endl;
+		pilaOpr.push(lex);
+		ImprimirEstadoPilas();
+		break;
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2016: Inicialización del FOR
+	// Usada en: EST-FOR → for id ( EXPR
+	// Genera: (=, variable_for, , valor_inicial)
+	// Guarda: inicio_ciclo en pila_saltos
+	// Re-inserta: variable_for en pilas para comparación posterior
+	// ═════════════════════════════════════════════════════════════════
+	case 2016: {
+		std::cout << "→ FOR: Inicialización" << std::endl;
+
+		if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+			std::cout << "  Error: Operandos insuficientes" << std::endl;
+			break;
+		}
+
+		// Extraer valor inicial
+		std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+		std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+		// Extraer variable del FOR
+		std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+		std::string varFor = pilaOperandos.top(); pilaOperandos.pop();
+
+		varFor_actual = varFor;
+
+		// Generar cuádruplo: (=, destino, , origen)
+		GenerarCuadruplo("=", varFor, "", op1);
+
+		// Guardar inicio del ciclo
+		pilaSaltos.push(contadorCuadruplos);
+		std::cout << "  Inicio ciclo: [" << contadorCuadruplos << "]" << std::endl;
+
+		// Re-insertar variable para comparación
+		if (tablaSimbolos.count(varFor)) {
+			pilaTipos.push(tablaSimbolos.at(varFor).Tipo);
+			pilaOperandos.push(varFor);
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2017: Condición de salida del FOR
+	// Usada en: EST-FOR → for id ( EXPR to EXPR
+	// Genera: (>, variable_for, valor_final, R)
+	// Operador '>': Sale del ciclo cuando variable_for > valor_final
+	// ═════════════════════════════════════════════════════════════════
+	case 2017: {
+		std::cout << "→ FOR: Condición (varFor > limite)" << std::endl;
+
+		if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
+			std::cout << "  Error: Operandos insuficientes" << std::endl;
+			break;
+		}
+
+		// Extraer límite del TO
+		std::string tipo2 = pilaTipos.top(); pilaTipos.pop();
+		std::string op2 = pilaOperandos.top(); pilaOperandos.pop();
+
+		// Extraer variable del FOR
+		std::string tipo1 = pilaTipos.top(); pilaTipos.pop();
+		std::string op1 = pilaOperandos.top(); pilaOperandos.pop();
+
+		// Generar comparación con '>'
+		std::string R = "R" + std::to_string(cont_resultado++);
+		pilaTipos.push("bool");
+		pilaOperandos.push(R);
+		GenerarCuadruplo(">", op1, op2, R);
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2018: GotoV del FOR (salida)
+	// Usada en: EST-FOR → después de condición
+	// Genera: (GotoV, condicion, , ?) - pendiente de rellenar
+	// Si condicion es TRUE → Sale del FOR
+	// ═════════════════════════════════════════════════════════════════
+	case 2018: {
+		std::cout << "→ FOR: SV (salida si TRUE)" << std::endl;
+
+		if (!pilaOperandos.empty()) {
+			std::string condicion = pilaOperandos.top();
+			pilaOperandos.pop();
+
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+
+			GenerarCuadruplo("SV", condicion, "", "?");
+			pilaSaltos.push(contadorCuadruplos - 1);
+			std::cout << " SV en: [" << (contadorCuadruplos - 1) << "]" << std::endl;
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2019: Cierre del FOR
+	// Usada en: EST-FOR → endfor
+	// Genera: (SI, , , inicio_ciclo)
+	// Rellena: SV anterior con dirección de salida
+	// ═════════════════════════════════════════════════════════════════
+	case 2019: {
+		std::cout << "→ FOR: Cierre (SI inicio)" << std::endl;
+
+		if (pilaSaltos.size() >= 2) {
+			// Sacar dirección del SV
+			int dirGotoV = pilaSaltos.top();
+			pilaSaltos.pop();
+
+			// Sacar dirección del inicio
+			int dirInicio = pilaSaltos.top();
+			pilaSaltos.pop();
+
+			// Generar SI al inicio
+			GenerarCuadruplo("SI", "", "", std::to_string(dirInicio));
+
+			// Rellenar SV
+			RellenarCuadruplo(dirGotoV, contadorCuadruplos);
+			std::cout << "  Relleno SV[" << dirGotoV << "] -> " << contadorCuadruplos << std::endl;
+		}
+
+		varFor_actual = "";
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2020: Guardar inicio del WHILE
+	// Usada en: EST-WHILE → while (
+	// Guarda: posición actual en pila_saltos
+	// ═════════════════════════════════════════════════════════════════
+	case 2020: {
+		std::cout << "→ WHILE: Guardar inicio" << std::endl;
+		pilaSaltos.push(contadorCuadruplos);
+		std::cout << "  Inicio: [" << contadorCuadruplos << "]" << std::endl;
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2021: GotoF del WHILE
+	// Usada en: EST-WHILE → while ( EXPR )
+	// Genera: (GotoF, condicion, , ?) - pendiente
+	// Si condicion es FALSE → Sale del WHILE
+	// ═════════════════════════════════════════════════════════════════
+	case 2021: {
+		std::cout << "→ WHILE: SF (salida si FALSE)" << std::endl;
+
+		if (!pilaOperandos.empty()) {
+			std::string condicion = pilaOperandos.top();
+			pilaOperandos.pop();
+
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+
+			GenerarCuadruplo("SF", condicion, "", "?");
+			pilaSaltos.push(contadorCuadruplos - 1);
+			std::cout << "  SF en: [" << (contadorCuadruplos - 1) << "]" << std::endl;
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2022: Cierre del WHILE
+	// Usada en: EST-WHILE → endwhile
+	// Genera: (Goto, , , inicio)
+	// Rellena: GotoF con dirección de salida
+	// ═════════════════════════════════════════════════════════════════
+	case 2022: {
+		std::cout << "→ WHILE: Cierre (SI inicio)" << std::endl;
+
+		if (pilaSaltos.size() >= 2) {
+			int dirGotoF = pilaSaltos.top();
+			pilaSaltos.pop();
+			int dirInicio = pilaSaltos.top();
+			pilaSaltos.pop();
+
+			GenerarCuadruplo("SI", "", "", std::to_string(dirInicio));
+			RellenarCuadruplo(dirGotoF, contadorCuadruplos);
+			std::cout << "  Relleno SF[" << dirGotoF << "] -> " << contadorCuadruplos << std::endl;
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2023: Guardar inicio del DO
+	// Usada en: EST-DO → do ESTATUTOS
+	// Guarda: posición actual en pila_saltos
+	// ═════════════════════════════════════════════════════════════════
+	case 2023: {
+		std::cout << "→ DO: Guardar inicio" << std::endl;
+		pilaSaltos.push(contadorCuadruplos);
+		std::cout << "  Inicio: [" << contadorCuadruplos << "]" << std::endl;
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	// ═════════════════════════════════════════════════════════════════
+	// ACCIÓN 2024: GotoV del DO-WHILE
+	// Usada en: EST-DO → dowhile ( EXPR )
+	// Genera: (GotoV, condicion, , inicio)
+	// Si condicion es TRUE → Repite el DO
+	// ═════════════════════════════════════════════════════════════════
+	case 2024: {
+		std::cout << "→ DO: SV (repetir si TRUE)" << std::endl;
+
+		if (!pilaOperandos.empty()) {
+			std::string condicion = pilaOperandos.top();
+			pilaOperandos.pop();
+
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+
+			if (!pilaSaltos.empty()) {
+				int dirInicio = pilaSaltos.top();
+				pilaSaltos.pop();
+
+				GenerarCuadruplo("SV", condicion, "", std::to_string(dirInicio));
+				std::cout << "  SV -> [" << dirInicio << "]" << std::endl;
+			}
+		}
+
+		ImprimirEstadoPilas();
+		break;
+	}
+
+	
+
+	default:
+		std::cout << "Acción no reconocida: " << produccion << std::endl;
 		break;
 	}
 }
 
-#pragma endregion 
+#pragma endregion
 
-#pragma region Sint�ctico
+#pragma region Sintáctico
 int relacionaTokenMatrizPre(int estadoLex, std::string palabra) {
 	int indiceColumnaMatriz = -1;
 
 	switch (estadoLex) {
-	case 100: // Palabras reservadas (requieren verificaci�n por 'palabra')
+	case 100: // Palabras reservadas (requieren verificación por 'palabra')
 		if (palabra == "include") {
 			colPre = 1000;
 			indiceColumnaMatriz = include;
@@ -1183,7 +1792,7 @@ int relacionaTokenMatrizPre(int estadoLex, std::string palabra) {
 		colPre = -1; indiceColumnaMatriz = -1; break;
 	}
 
-	return indiceColumnaMatriz; // Retorna el �ndice de columna real de la matrizPre (0-59)
+	return indiceColumnaMatriz; // Retorna el índice de columna real de la matrizPre (0-59)
 }
 
 void ErroresSin(int e) {
@@ -1195,17 +1804,17 @@ void ErroresSin(int e) {
 	case 603: ERRSIN = "Se espera class para la definicion de una clase."; break;
 	case 604: ERRSIN = "Se esperaba la defincion de una constante [const], o se esperaba [def, function, class]."; break;
 	case 605: ERRSIN = "Se esperaba def para la definicion de variable, o se esperaba const, function, class, identificador, return, write, read, ++, --, if, while, do, for, endclass, endfunction, dowhile, elseif, else, endif, endwhile, endfor]."; break;
-	case 606: ERRSIN = "Se esperaba un identificador v�lido."; break;
-	case 607: ERRSIN = "Se esperaba ' , identificador ' para la definicion de m�s de un identificador, o se esperaba [of]."; break;
-	case 608: ERRSIN = "Se esperaba un identificador v�lido."; break;
-	case 609: ERRSIN = "Se esperaba ' , identificador ' para la definicion de m�s de un identificador, o se esperaba [=]."; break;
-	case 610: ERRSIN = "Se esperaba un identificador v�lido."; break;
-	case 611: ERRSIN = "Se esperaba ' , identificador ' para la definici�n de m�s de un identificador, o se esperaba [)]."; break;
+	case 606: ERRSIN = "Se esperaba un identificador válido."; break;
+	case 607: ERRSIN = "Se esperaba ' , identificador ' para la definicion de más de un identificador, o se esperaba [of]."; break;
+	case 608: ERRSIN = "Se esperaba un identificador válido."; break;
+	case 609: ERRSIN = "Se esperaba ' , identificador ' para la definicion de más de un identificador, o se esperaba [=]."; break;
+	case 610: ERRSIN = "Se esperaba un identificador válido."; break;
+	case 611: ERRSIN = "Se esperaba ' , identificador ' para la definición de más de un identificador, o se esperaba [)]."; break;
 	case 612: ERRSIN = "Tipo de dato no valido, se esperaba un tipo de dato (int, float, char, string, bool o void)."; break;
 	case 613: ERRSIN = "Se esperaba una constante (cteentera, ctereal, ctenotacion, ctecaracter o ctestring)."; break;
 	case 614: ERRSIN = "Se esperaba function para iniciar la definicion de la funcion, o se esperaba [def, const, class]."; break;
 	case 615: ERRSIN = "Se esperaba un identificador valido como parametro, o se esperaba [)]."; break;
-	case 616: ERRSIN = "Se esperaba una secuencia valida para definir m�s de un par�metro."; break;
+	case 616: ERRSIN = "Se esperaba una secuencia valida para definir más de un parámetro."; break;
 	case 617: ERRSIN = "Se esperaba un [identificador, return, write, read,++,--, ] o una sentencia [if, while,do,for, endclass, endfunction, dowhile, elseif, else, endif, endwhile, endfor] ."; break;
 	case 618: ERRSIN = "Se esperaba un [identificador, return, write, read, ++,--]."; break;
 	case 619: ERRSIN = "Se esperaba una sentencia[if, while,do,for]."; break;
@@ -1215,9 +1824,9 @@ void ErroresSin(int e) {
 	case 623: ERRSIN = "Se esperaba la sentencia return."; break;
 	case 624: ERRSIN = "Para la expresion se esperaba un [ identificador, cteentera, ctereal, ctenotacion, ctecaracter, ctestring, (, ! ]."; break;
 	case 625: ERRSIN = "Se esperaba la secuencia correcta [, ] para definir varias expresiones o se esperaba [)]."; break;
-	case 626: ERRSIN = "Se esperaba un [++ � --]."; break;
-	case 627: ERRSIN = "Se esperaba un [++ � --]."; break;
-	case 628: ERRSIN = "Se esperaba un [++, -- � =]."; break;
+	case 626: ERRSIN = "Se esperaba un [++ ó --]."; break;
+	case 627: ERRSIN = "Se esperaba un [++ ó --]."; break;
+	case 628: ERRSIN = "Se esperaba un [++, -- ó =]."; break;
 	case 629: ERRSIN = "Se esperaba la sentencia do."; break;
 	case 630: ERRSIN = "Se esperaba la sentencia if."; break;
 	case 631: ERRSIN = "Se esperaba un [elseif, else, endif]."; break;
@@ -1241,7 +1850,7 @@ void ErroresSin(int e) {
 	case 649: ERRSIN = "Se esperaba un [ (,  *, /, %, **, +, -, ==, !=, <, <=, >, >=, &&, ||, , , ), to ]."; break;
 	case 650: ERRSIN = "Se esperaba un identificador o )."; break;
 	case 651: ERRSIN = "Se esperaba , o )."; break;
-	case 652: ERRSIN = "Token insesperado, elemento no reconocido por el sint�ctico."; break;
+	case 652: ERRSIN = "Token insesperado, elemento no reconocido por el sintáctico."; break;
 	case 800: ERRSIN = "Fin de archivo inesperado"; break;
 	}
 }
@@ -1253,6 +1862,13 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	System::String^ codespace = form->CodeSpace->Text;
 	std::stack<int> PilaSintactico;
 	VaciarStack();
+
+	// **INICIALIZAR CONTADORES Y LIMPIAR ESTRUCTURAS DE CUÁDRUPLOS**
+	contadorCuadruplos = 0;
+	cont_resultado = 1;
+	listaCuadruplos.clear();
+	while (!pilaSaltos.empty()) pilaSaltos.pop();
+
 	bool esConstante = false;
 	int token_id;
 	std::string lexConst;
@@ -1266,7 +1882,6 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	form->ErrorsSpaces->Clear();
 	tablaSimbolos.clear();
 	ErroresSemanticos.clear();
-
 
 	bool esNoTerminal = false, error = false, TerminaTexto = false;
 	MostrarError errorcito;
@@ -1334,6 +1949,9 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 			if (PilaSintactico.top() == colPre) {
 
 				token_id = PilaSintactico.top();
+
+				estadoLexicoActual = tokencito.edo;
+
 				if (token_id == 1001) // si es la palabra def  || token_id == 1002
 					esDeclaracion = true;
 				if (token_id == 1002) { // si es la palabra const
@@ -1372,9 +1990,10 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				//return;
 			}
 		}
-		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2009) {
+		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2024) {
 			int numP = PilaSintactico.top();
 			PilaSintactico.pop();
+			//estadoLexicoActual = tokencito.edo;  
 
 			if (esConstante && numP == 2001) {
 				if (token_id >= 1012 && token_id <= 1016) { // Valor de las constantes
@@ -1413,6 +2032,8 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 
 		}
 	}
+	MostrarCuadruplos(form);
+
 	if (PilaSintactico.top() == 1059) {
 		relacionaTokenMatrizPre(tokencito.edo, palabraTemp);
 		if (PilaSintactico.top() != colPre) { // Si no es EoF
@@ -1435,11 +2056,11 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 	}
 	if (errorG.empty()) {
 		form->SintaxisSpace->SelectionColor = System::Drawing::Color::Green;
-		form->SintaxisSpace->AppendText("An�lisis sint�ctico correcto.\n");
+		form->SintaxisSpace->AppendText("Análisis sintáctico correcto.\n");
 	}
 	else {
 		form->SintaxisSpace->SelectionColor = System::Drawing::Color::Red;
-		form->SintaxisSpace->AppendText("An�lisis sint�ctico con errores.\n");
+		form->SintaxisSpace->AppendText("Análisis sintáctico con errores.\n");
 	}
 	for (MostrarError error : errorG) {
 		System::String^ codeError = gcnew System::String(errorcito.edo.ToString());
@@ -1453,6 +2074,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 }
 
 #pragma endregion
+
 
 [STAThreadAttribute]
 void main()
