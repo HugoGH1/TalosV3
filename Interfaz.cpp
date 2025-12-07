@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <msclr/marshal_cppstd.h>
+#include <vcclr.h>
 
 using namespace std;
 using namespace System;
@@ -167,8 +168,8 @@ std::vector <std::vector <int>> producciones = {
 	{30}, //ESTATUTOS-SP
 	{35}, //ESTATUTOS-SP
 	{29, 2001,1005}, // EST-ASIG-POST
-	{1052, 11, 1026, 1019}, //EST-READ
-	{1052, 25, 1026, 1018}, //EST-WRITE
+	{1052,2025,2001,11,1026,1019}, //EST-READ  // 1019 = read
+	{1052,2026,2001,25, 1026, 1018}, //EST-WRITE
 	{36, 1017}, //EST-RETURN
 	{26, 36},//PROD-EXPR
 	{25, 1053}, //PROD-EXPR2
@@ -238,6 +239,9 @@ std::string PalabrasReservadas[31] = {"include","lib","endlib","class","endclass
 
 int EstadoDiferente[14] = {100,101,102,103,104,109,111,113,116,126,105,106,108,107};
 
+static gcroot<System::Windows::Forms::Form^> ventanaPopUp = nullptr;
+static gcroot<System::Windows::Forms::DataGridView^> grid = nullptr;
+
 #pragma endregion
 
 #pragma region Estructuras para Cuádruplos
@@ -281,37 +285,72 @@ void RellenarCuadruplo(int direccion, int valorSalto) {
 }
 
 void MostrarCuadruplos(TalosV3::Interfaz^ form) {
-	//form->CuadruplosSpace->Clear(); // Asume que tienes un TextBox llamado CuadruplosSpace
 
-	//for (const auto& cuad : listaCuadruplos) {
-	//	System::String^ linea = "[" + cuad.direccion + "] (" +
-	//		gcnew System::String(cuad.operador.c_str()) + ", " +
-	//		gcnew System::String(cuad.op1.c_str()) + ", " +
-	//		gcnew System::String(cuad.op2.c_str()) + ", " +
-	//		gcnew System::String(cuad.resultado.c_str()) + ")\n";
+	System::Windows::Forms::Form^ ventanaActual = ventanaPopUp;
+	if (ventanaActual == nullptr || ventanaActual->IsDisposed) { // Si la ventana no existe o fue cerrada
+		
+		ventanaActual = gcnew System::Windows::Forms::Form();
+		ventanaActual->Text = "Generación de Cuádruplos - Resultados";
+		ventanaActual->Size = System::Drawing::Size(700, 500);
+		ventanaActual->StartPosition = FormStartPosition::CenterScreen;
+		ventanaActual->BackColor = System::Drawing::Color::FromArgb(36, 26, 46);
 
-	//form->CuadruplosSpace->AppendText(linea);
-	 
-	std::cout << "\n========================================" << std::endl;
-	std::cout << "       CUÁDRUPLOS GENERADOS" << std::endl;
-	std::cout << "========================================" << std::endl;
+		System::Windows::Forms::DataGridView^ nuevaGrid = gcnew System::Windows::Forms::DataGridView();
+		nuevaGrid->Dock = DockStyle::Fill; // Que ocupe toda la ventana
+		nuevaGrid->AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode::Fill; // Ajustar ancho columnas
+		nuevaGrid->AllowUserToAddRows = false; // Que no salga la fila vacía abajo
+		nuevaGrid->ReadOnly = true; // Solo lectura
+		nuevaGrid->BackgroundColor = System::Drawing::Color::FromArgb(36, 26, 46);
+		nuevaGrid->RowHeadersVisible = false; // Ocultar encabezado de filas
+		nuevaGrid->DefaultCellStyle->BackColor = System::Drawing::Color::FromArgb(39, 34, 52);
+		nuevaGrid->DefaultCellStyle->SelectionBackColor = System::Drawing::Color::FromArgb(74, 64, 99);
+		nuevaGrid->EnableHeadersVisualStyles = false;
+		nuevaGrid->ColumnHeadersDefaultCellStyle->BackColor = System::Drawing::Color::FromArgb(36, 26, 46);
+		nuevaGrid->ColumnHeadersDefaultCellStyle->ForeColor = System::Drawing::Color::FromArgb(175, 179, 183);
+		nuevaGrid->ColumnHeadersDefaultCellStyle->Font = gcnew System::Drawing::Font("Quicksand", 10, System::Drawing::FontStyle::Bold);
+		nuevaGrid->ColumnHeadersHeight = 30;
+		nuevaGrid->ColumnHeadersBorderStyle = System::Windows::Forms::DataGridViewHeaderBorderStyle::Single;
+		nuevaGrid->RowTemplate->Height = 25;
+		nuevaGrid->Font = gcnew System::Drawing::Font("Quicksand", 10);
+		nuevaGrid->ForeColor = System::Drawing::Color::FromArgb(175, 179, 183);
 
-	if (listaCuadruplos.empty()) {
-		std::cout << "No se generaron cuádruplos." << std::endl;
+		//Definir las Columnas
+		nuevaGrid->Columns->Add("ID", "#");
+		nuevaGrid->Columns->Add("OPR", "Operador");
+		nuevaGrid->Columns->Add("OP1", "Operando 1");
+		nuevaGrid->Columns->Add("OP2", "Operando 2");
+		nuevaGrid->Columns->Add("RES", "Resultado");
+
+		ventanaActual->Controls->Add(nuevaGrid);
+		ventanaActual->Show(); // Mostrarla por primera vez
+
+		ventanaPopUp = ventanaActual;
+		grid = nuevaGrid;
 	}
-	else {
+	else { // La ventana sigue abierta y solo se analiza de nuevo
+		System::Windows::Forms::DataGridView^ gridActual = grid;
+		if (gridActual != nullptr) {
+			gridActual->Rows->Clear(); // Limpiar filas anteriores
+		}
+		ventanaActual->BringToFront();
+		if (!ventanaActual->Visible) ventanaActual->Show();
+	}
+	
+	//  LLENAR DATOS
+	// Recuperamos el grid desde la variable global estática con cast
+	System::Windows::Forms::DataGridView^ gridParaLlenar = grid;
+
+	if (gridParaLlenar != nullptr) {
 		for (const auto& cuad : listaCuadruplos) {
-			std::cout << "[" << cuad.direccion << "] ("
-				<< cuad.operador << ", "
-				<< cuad.op1 << ", "
-				<< cuad.op2 << ", "
-				<< cuad.resultado << ")" << std::endl;
+			String^ id = gcnew System::String(std::to_string(cuad.direccion).c_str());
+			String^ op = msclr::interop::marshal_as<String^>(cuad.operador);
+			String^ op1 = msclr::interop::marshal_as<String^>(cuad.op1);
+			String^ op2 = msclr::interop::marshal_as<String^>(cuad.op2);
+			String^ res = msclr::interop::marshal_as<String^>(cuad.resultado);
+
+			gridParaLlenar->Rows->Add(id, op, op1, op2, res);
 		}
 	}
-
-	std::cout << "========================================\n" << std::endl;
-
-//	}
 }
 
 #pragma endregion
@@ -1614,9 +1653,43 @@ void accionesSemanticas(int produccion, std::string lex) {
 		ImprimirEstadoPilas();
 		break;
 	}
+     
+	case 2025: {
+		//std::string palabraRead = lex;
 
-	
-
+		//if (lex == "read") {
+		if (!pilaOperandos.empty()) {
+			std::string varRead = pilaOperandos.top();
+			pilaOperandos.pop();
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+			GenerarCuadruplo("READ", "", "", varRead);
+			std::cout << "→ READ variable: " << varRead << std::endl;
+		}
+		//}
+		//palabraRead = "";
+		ImprimirEstadoPilas();
+		break;
+	}
+		
+	case 2026: {
+		//std::string palabraWrite = lex;
+		//if (lex == "write") {
+		if (!pilaOperandos.empty()) {
+			std::string varWrite = pilaOperandos.top();
+			pilaOperandos.pop();
+			if (!pilaTipos.empty()) {
+				pilaTipos.pop();
+			}
+			GenerarCuadruplo("WRITE", "", "", varWrite);
+			std::cout << "→ WRITE variable: " << varWrite << std::endl;
+		}
+		//}
+		//palabraWrite = "";
+		ImprimirEstadoPilas();
+		break;
+	}
 	default:
 		std::cout << "Acción no reconocida: " << produccion << std::endl;
 		break;
@@ -1990,7 +2063,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 				//return;
 			}
 		}
-		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2024) {
+		else if (PilaSintactico.top() >= 2001 && PilaSintactico.top() <= 2026) {
 			int numP = PilaSintactico.top();
 			PilaSintactico.pop();
 			//estadoLexicoActual = tokencito.edo;  
@@ -2032,6 +2105,7 @@ void TalosV3::Interfaz::AnalizadorSintactico(TalosV3::Interfaz^ form) {
 
 		}
 	}
+
 	MostrarCuadruplos(form);
 
 	if (PilaSintactico.top() == 1059) {
