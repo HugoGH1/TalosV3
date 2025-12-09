@@ -290,7 +290,7 @@ void MostrarCuadruplos(TalosV3::Interfaz^ form) {
 	if (ventanaActual == nullptr || ventanaActual->IsDisposed) { // Si la ventana no existe o fue cerrada
 		
 		ventanaActual = gcnew System::Windows::Forms::Form();
-		ventanaActual->Text = "Generación de Cuádruplos - Resultados";
+		ventanaActual->Text = "Generación de Cuadruplos - Resultados";
 		ventanaActual->Size = System::Drawing::Size(700, 500);
 		ventanaActual->StartPosition = FormStartPosition::CenterScreen;
 		ventanaActual->BackColor = System::Drawing::Color::FromArgb(36, 26, 46);
@@ -1024,10 +1024,10 @@ void AccionConst1(const std::string& lexema) {
 #pragma region Acciones Semánticas
 
 void accionesSemanticas(int produccion, std::string lex) {
-	std::cout << "\n>>> ACCIÓN " << produccion << " <<<" << std::endl;
+	std::cout << "\n>>> ACCION " << produccion << " <<<" << std::endl;
 
 	switch (produccion) {
-
+#pragma region Semantico
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2001: PUSH operando a pila_operandos
 	// Usada en: FACT → id | cte_int | cte_real | cte_char | cte_string
@@ -1108,7 +1108,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 	// Para generar cuadruplo R con * / % **
 	// ═════════════════════════════════════════════════════════════════ 
 	case 2003: {
-		std::cout << "→ Generar cuádruplo: *, /, %, **" << std::endl;
+		std::cout << "→ Generar cuadruplo: *, /, %, **" << std::endl;
 
 		// Procesar todos los operadores multiplicativos pendientes
 		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
@@ -1162,7 +1162,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 	// Generamos cuadruplo R de + - ||
 	// ═════════════════════════════════════════════════════════════════
 	case 2004: {
-		std::cout << "→ Generar cuádruplo: +, -, ||" << std::endl;
+		std::cout << "→ Generar cuadruplo: +, -, ||" << std::endl;
 
 		// Procesar todos los operadores aditivos pendientes
 		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
@@ -1256,7 +1256,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 	// Genera: (=, variable_destino, , resultado_expresión)
 	// ═════════════════════════════════════════════════════════════════
 	case 2009: {
-		std::cout << "→ Generar asignación" << std::endl;
+		std::cout << "→ Generar asignacion" << std::endl;
 
 		if (pilaTipos.size() < 2 || pilaOperandos.size() < 2) {
 			std::cout << "  Error: Operandos insuficientes" << std::endl;
@@ -1281,7 +1281,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 			GenerarCuadruplo("=", op2, "", op1);
 		}
 		else {
-			ERRSEM = "Error semantico: Tipo incompatible en asignación";
+			ERRSEM = "Error semantico: Tipo incompatible en asignacion";
 			ErroresSemanticos.push_back(ERRSEM);
 			std::cout << "  " << ERRSEM << std::endl;
 			if (!pilaOpr.empty()) {
@@ -1291,12 +1291,12 @@ void accionesSemanticas(int produccion, std::string lex) {
 		ImprimirEstadoPilas();
 		break;
 	}
-
-
+#pragma endregion
+#pragma region IF
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2010: GotoF del IF
+	// ACCIÓN 2010: SF del IF
 	// Usada en: EST-IF → if ( EXPR )
-	// Genera: (GotoF, condicion, , ?) - pendiente
+	// Genera: (SF, condicion, , ?) - pendiente
 	// Si condicion es FALSE → Salta al siguiente bloque
 	// ═════════════════════════════════════════════════════════════════
 	case 2010: {
@@ -1320,19 +1320,19 @@ void accionesSemanticas(int produccion, std::string lex) {
 	}
 
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2011: Goto del IF (saltar al final)
+	// ACCIÓN 2011: SI del IF (saltar al final)
 	// Usada en: EST-IF → después de bloque if/elseif
-	// Genera: (Goto, , , ?) - pendiente
-	// Rellena: GotoF anterior con dirección actual
+	// Genera: (SI, , , ?) - pendiente
+	// Rellena: SI anterior con dirección actual
 	// ═════════════════════════════════════════════════════════════════
 	case 2011: {
 		std::cout << "→ IF: SI al final" << std::endl;
 
-		// Generar Goto incondicional
+		// Generar SI incondicional
 		GenerarCuadruplo("SI", "", "", "?");
 		int dirGoto = contadorCuadruplos - 1;
 
-		// Rellenar GotoF anterior
+		// Rellenar SF anterior
 		if (!pilaSaltos.empty()) {
 			int dirGotoF = pilaSaltos.top();
 			pilaSaltos.pop();
@@ -1340,7 +1340,7 @@ void accionesSemanticas(int produccion, std::string lex) {
 			std::cout << "  Relleno SI[" << dirGotoF << "] -> " << contadorCuadruplos << std::endl;
 		}
 
-		// Guardar nuevo Goto para rellenar al ENDIF
+		// Guardar nuevo SI para rellenar al ENDIF
 		pilaSaltos.push(dirGoto);
 		std::cout << "  SI en: [" << dirGoto << "]" << std::endl;
 
@@ -1349,9 +1349,9 @@ void accionesSemanticas(int produccion, std::string lex) {
 	}
 
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2012: Rellenar todos los Goto del IF
+	// ACCIÓN 2012: Rellenar todos los SI del IF
 	// Usada en: EST-IF → endif
-	// Rellena: Todos los Goto pendientes con dirección actual
+	// Rellena: Todos los SI pendientes con dirección actual
 	// ═════════════════════════════════════════════════════════════════
 	case 2012: {
 		std::cout << "→ IF: Rellenar todos los SI (ENDIF)" << std::endl;
@@ -1367,14 +1367,15 @@ void accionesSemanticas(int produccion, std::string lex) {
 		ImprimirEstadoPilas();
 		break;
 	}
-
+#pragma endregion
+#pragma region Operadores Relacionales
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2014: Generar cuádruplos para operadores relacionales
 	// Usada en: EXPR3 → EXPR3 (<|<=|>|>=|==|!=) EXPR2
 	// Genera: (oper, op1, op2, R) donde R es tipo 'bool'
 	// ═════════════════════════════════════════════════════════════════
 	case 2014: {
-		std::cout << "→ Generar cuádruplo relacional" << std::endl;
+		std::cout << "→ Generar cuadruplo relacional" << std::endl;
 
 		while (!pilaOpr.empty() && pilaOpr.top() != "MFF") {
 			std::string oper = pilaOpr.top();
@@ -1416,7 +1417,8 @@ void accionesSemanticas(int produccion, std::string lex) {
 		pilaOpr.push(lex);
 		ImprimirEstadoPilas();
 		break;
-
+#pragma	endregion
+#pragma region FOR
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2016: Inicialización del FOR
 	// Usada en: EST-FOR → for id ( EXPR
@@ -1492,9 +1494,9 @@ void accionesSemanticas(int produccion, std::string lex) {
 	}
 
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2018: GotoV del FOR (salida)
+	// ACCIÓN 2018: SV del FOR (salida)
 	// Usada en: EST-FOR → después de condición
-	// Genera: (GotoV, condicion, , ?) - pendiente de rellenar
+	// Genera: (SV, condicion, , ?) - pendiente de rellenar
 	// Si condicion es TRUE → Sale del FOR
 	// ═════════════════════════════════════════════════════════════════
 	case 2018: {
@@ -1547,7 +1549,8 @@ void accionesSemanticas(int produccion, std::string lex) {
 		ImprimirEstadoPilas();
 		break;
 	}
-
+#pragma endregion
+#pragma region WHILE
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2020: Guardar inicio del WHILE
 	// Usada en: EST-WHILE → while (
@@ -1562,9 +1565,9 @@ void accionesSemanticas(int produccion, std::string lex) {
 	}
 
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2021: GotoF del WHILE
+	// ACCIÓN 2021: SF del WHILE
 	// Usada en: EST-WHILE → while ( EXPR )
-	// Genera: (GotoF, condicion, , ?) - pendiente
+	// Genera: (SF, condicion, , ?) - pendiente
 	// Si condicion es FALSE → Sale del WHILE
 	// ═════════════════════════════════════════════════════════════════
 	case 2021: {
@@ -1590,9 +1593,10 @@ void accionesSemanticas(int produccion, std::string lex) {
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2022: Cierre del WHILE
 	// Usada en: EST-WHILE → endwhile
-	// Genera: (Goto, , , inicio)
-	// Rellena: GotoF con dirección de salida
+	// Genera: (SI, , , inicio)
+	// Rellena: SF con dirección de salida
 	// ═════════════════════════════════════════════════════════════════
+
 	case 2022: {
 		std::cout << "→ WHILE: Cierre (SI inicio)" << std::endl;
 
@@ -1611,6 +1615,8 @@ void accionesSemanticas(int produccion, std::string lex) {
 		break;
 	}
 
+#pragma endregion
+#pragma region DO-WHILE
 	// ═════════════════════════════════════════════════════════════════
 	// ACCIÓN 2023: Guardar inicio del DO
 	// Usada en: EST-DO → do ESTATUTOS
@@ -1625,9 +1631,9 @@ void accionesSemanticas(int produccion, std::string lex) {
 	}
 
 	// ═════════════════════════════════════════════════════════════════
-	// ACCIÓN 2024: GotoV del DO-WHILE
+	// ACCIÓN 2024: SV del DO-WHILE
 	// Usada en: EST-DO → dowhile ( EXPR )
-	// Genera: (GotoV, condicion, , inicio)
+	// Genera: (SV, condicion, , inicio)
 	// Si condicion es TRUE → Repite el DO
 	// ═════════════════════════════════════════════════════════════════
 	case 2024: {
@@ -1653,11 +1659,19 @@ void accionesSemanticas(int produccion, std::string lex) {
 		ImprimirEstadoPilas();
 		break;
 	}
-     
-	case 2025: {
-		//std::string palabraRead = lex;
+#pragma endregion
 
-		//if (lex == "read") {
+#pragma region read/write
+			 // ═════════════════════════════════════════════════════════════════
+			 // ACCIÓN 2025: Generar cuádruplo READ
+			 // Usada en: EST-READ → read ( ID )
+			 // Genera: (READ, , , variable)
+			 // ═════════════════════════════════════════════════════════════════
+			 // ACCIÓN 2026: Generar cuádruplo WRITE
+			 // Usada en: EST-WRITE → write ( ID )
+			 // Genera: (WRITE, , , variable)
+// ═════════════════════════════════════════════════════════════════
+	case 2025: {
 		if (!pilaOperandos.empty()) {
 			std::string varRead = pilaOperandos.top();
 			pilaOperandos.pop();
@@ -1667,15 +1681,11 @@ void accionesSemanticas(int produccion, std::string lex) {
 			GenerarCuadruplo("READ", "", "", varRead);
 			std::cout << "→ READ variable: " << varRead << std::endl;
 		}
-		//}
-		//palabraRead = "";
 		ImprimirEstadoPilas();
 		break;
 	}
 		
 	case 2026: {
-		//std::string palabraWrite = lex;
-		//if (lex == "write") {
 		if (!pilaOperandos.empty()) {
 			std::string varWrite = pilaOperandos.top();
 			pilaOperandos.pop();
@@ -1685,13 +1695,13 @@ void accionesSemanticas(int produccion, std::string lex) {
 			GenerarCuadruplo("WRITE", "", "", varWrite);
 			std::cout << "→ WRITE variable: " << varWrite << std::endl;
 		}
-		//}
-		//palabraWrite = "";
 		ImprimirEstadoPilas();
 		break;
 	}
+#pragma endregion
+
 	default:
-		std::cout << "Acción no reconocida: " << produccion << std::endl;
+		std::cout << "Accion no reconocida: " << produccion << std::endl;
 		break;
 	}
 }
